@@ -12,7 +12,9 @@ struct EndToEndTests {
         let dsuServer = DSUServer(port: 0)
         let dsuPort = try await dsuServer.start()
         defer { dsuServer.stop() }
-        let host = ControllerHost(service: nil) { slot, state in
+        let identity = SecureChannel.PrivateKey()
+        let host = ControllerHost(service: nil, approvedPhones: [identity.publicKey.rawRepresentation]) { _ in
+        } output: { slot, state in
             if let state { dsuServer.update(slot: slot, state: state) } else { dsuServer.disconnect(slot: slot) }
         }
         let hostPort = try await host.start()
@@ -20,7 +22,7 @@ struct EndToEndTests {
 
         let link = ControllerLink(
             to: .hostPort(host: "127.0.0.1", port: NWEndpoint.Port(rawValue: hostPort)!),
-            clientID: UUID(),
+            identity: identity,
             name: "Phone"
         ) { _ in }
         link.connect()

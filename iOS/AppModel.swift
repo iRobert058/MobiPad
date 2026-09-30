@@ -2,9 +2,6 @@ import Foundation
 import MobiPadNetwork
 import MobiPadProtocol
 import Observation
-#if canImport(UIKit)
-import UIKit
-#endif
 
 /// Finds Macs, and owns the link to the one the user picked.
 @MainActor @Observable
@@ -13,17 +10,31 @@ final class AppModel {
     private(set) var connectedMac: MacBrowser.Mac?
     private(set) var status = ControllerLink.Status.disconnected
 
+    /// Shown on the Mac, in the approval prompt and the player list.
+    var playerName: String {
+        didSet { UserDefaults.standard.set(playerName, forKey: Self.playerNameKey) }
+    }
+
     private var browser: MacBrowser?
     private var link: ControllerLink?
     /// Ignores status updates from a link that has since been replaced.
     private var linkToken = UUID()
 
+    private static let playerNameKey = "playerName"
+    private static let identityKey = "identityKey"
+
+    init() {
+        playerName = UserDefaults.standard.string(forKey: Self.playerNameKey) ?? ""
+    }
+
     var statusText: String {
-        let macName = connectedMac?.name ?? "Mac"
+        let macName = connectedMac?.name ?? "the Mac"
         return switch status {
         case .connecting: "Connecting to \(macName)…"
-        case .connected(let slot): "Player \(slot + 1)"
+        case .waitingForApproval: "Click Allow on \(macName)"
+        case .connected(let slot): "\(effectiveName) · Player \(slot + 1)"
         case .full: "\(macName) already has 4 players"
+        case .denied: "\(macName) didn’t allow this iPhone"
         case .disconnected: "Disconnected"
         }
     }
@@ -45,7 +56,7 @@ final class AppModel {
 
         let token = UUID()
         linkToken = token
-        let link = ControllerLink(to: mac.endpoint, clientID: Self.clientID, name: Self.deviceName) { [weak self] status in
+        let link = ControllerLink(to: mac.endpoint, identity: Self.identity, name: effectiveName) { [weak self] status in
             Task { @MainActor in
                 guard let self, self.linkToken == token else { return }
                 self.status = status
@@ -68,22 +79,20 @@ final class AppModel {
         link?.send(state)
     }
 
-    /// Stays the same across launches, so the Mac gives this phone its player number back.
-    private static let clientID: UUID = {
-        let key = "clientID"
-        if let stored = UserDefaults.standard.string(forKey: key), let id = UUID(uuidString: stored) {
-            return id
-        }
-        let id = UUID()
-        UserDefaults.standard.set(id.uuidString, forKey: key)
-        return id
-    }()
-
-    private static var deviceName: String {
-        #if canImport(UIKit)
-        UIDevice.current.name
-        #else
-        Host.current().localizedName ?? "Mac"
-        #endif
+    private var effectiveName: String {
+        let trimmed = playerName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "iPhone" : trimmed
     }
+
+    /// This phone's long-term key. The Mac remembers it once the user allows the phone, so it has to
+    /// survive app launches. Deleting the app creates a new identity that has to be allowed again.
+    private static let identity: SecureChannel.PrivateKey = {
+        if let stored = UserDefaults.standard.data(forKey: identityKey),
+           let key = try? SecureChannel.PrivateKey(rawRepresentation: stored) {
+            return key
+        }
+        let key = SecureChannel.PrivateKey()
+        UserDefaults.standard.set(key.rawRepresentation, forKey: identityKey)
+        return key
+    }()
 }

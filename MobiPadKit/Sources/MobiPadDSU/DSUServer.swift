@@ -1,6 +1,7 @@
 import Foundation
 import MobiPadProtocol
 import Network
+import os
 
 /// Serves up to four controllers to emulators (such as Dolphin) over the DSU protocol.
 ///
@@ -10,6 +11,7 @@ public final class DSUServer: @unchecked Sendable {
     /// Dolphin re-registers every second; a client that stays silent this long is dropped.
     static let clientTimeout: TimeInterval = 5
 
+    private let log = Logger(subsystem: "MobiPad", category: "dsu")
     private let queue = DispatchQueue(label: "MobiPad.DSUServer")
     private let port: UInt16
     private let serverID = UInt32.random(in: .min ... .max)
@@ -131,6 +133,9 @@ public final class DSUServer: @unchecked Sendable {
                 connection.send(content: info, completion: .idempotent)
             }
         case .subscribe(let requested):
+            if !requested.isSubset(of: client.subscribedSlots) {
+                log.notice("An emulator subscribed to slots \(requested.sorted().map { $0 + 1 }, privacy: .public)")
+            }
             client.subscribedSlots.formUnion(requested)
             // Answer right away so the emulator doesn't wait for the next input change.
             for slot in requested where slots[slot].state != nil {
@@ -154,6 +159,9 @@ public final class DSUServer: @unchecked Sendable {
     private func removeExpiredClients() {
         let cutoff = Date().addingTimeInterval(-Self.clientTimeout)
         for (id, client) in clients where client.lastSeen < cutoff {
+            if !client.subscribedSlots.isEmpty {
+                log.notice("An emulator stopped asking for slots \(client.subscribedSlots.sorted().map { $0 + 1 }, privacy: .public)")
+            }
             client.connection.cancel()
             clients[id] = nil
         }

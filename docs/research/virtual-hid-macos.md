@@ -13,6 +13,10 @@ Architecture: `iPhone → Wi-Fi → Mac companion → DSU server (localhost) or 
 
 No special test machine is needed: both routes work on a normal Mac with SIP on.
 
+**Second emulator (Cemu or Ryujinx, checked against their source and docs on 2026-09-30):**
+- **Cemu** (Wii U) has a full DSU controller API ("DSUController": buttons, sticks, triggers, motion), built on every platform, macOS included. It reads buttons from the DSU bitmask bytes, while Dolphin reads the analog pressure bytes; MobiPad fills both.
+- **Ryujinx** (Switch): its docs list SDL gamepads and the keyboard as input devices, with no DSU option. As far as I know its "CemuHook" support covers motion only, but I couldn't confirm that in its source, because the repository has moved since the original project ended. MobiPad therefore feeds Ryujinx through the keyboard route, for Player 1.
+
 Caveat: Dolphin labels DSU buttons with PlayStation names (Cross, Circle, Square, Triangle). Mapping them is a one-time step in Dolphin's controller settings, and MobiPad could ship a ready-made Dolphin profile.
 
 The findings below are kept for reference, in case Core HID becomes an option later (for example, if Apple adds a development variant of the entitlement).
@@ -83,12 +87,13 @@ That leaves two identity strategies:
 
 1. ~~Paid Apple Developer Program?~~ No, and none planned.
 2. ~~Test Mac with SIP and AMFI disabled?~~ No, and no longer needed.
-3. ~~Target games?~~ Mario Kart Wii (Dolphin) plus one more emulator. **Which one?** That decides whether the keyboard fallback is needed for the MVP.
+3. ~~Target games?~~ Mario Kart Wii (Dolphin), plus Cemu or Ryujinx. Both are covered: Cemu through DSU, Ryujinx through the keyboard.
 4. ~~Imitating Xbox/DualSense?~~ Moot without Core HID.
 
 ## Sources
 
 - Dolphin source, [`DualShockUDPClient.cpp`](https://github.com/dolphin-emu/dolphin/blob/master/Source/Core/InputCommon/ControllerInterface/DualShockUDPClient/DualShockUDPClient.cpp): the inputs Dolphin's DSU client exposes, and its server configuration.
+- Cemu source, [`DSUController.cpp`](https://github.com/cemu-project/Cemu/blob/main/src/input/api/DSU/DSUController.cpp) and [`src/input/CMakeLists.txt`](https://github.com/cemu-project/Cemu/blob/main/src/input/CMakeLists.txt): Cemu's DSU input and its build on all platforms.
 - Dolphin forums, [cemuhook DSU protocol doesn't see GameCube buttons](https://forums.dolphin-emu.org/Thread-cemuhook-dsu-protocol-doesn-t-see-gamecube-buttons): DSU buttons show up under PlayStation names.
 - Apple DTS, [Supported way to expose an iPhone+controller as a macOS gamepad without restricted entitlements?](https://developer.apple.com/forums/thread/820708) (Mar 2026): entitlement is required, Core HID recommended, CGEventTap as fallback, no development variant yet (r.173531752).
 - Apple DTS, [Which virtual-HID entitlement path for a gamepad app — CoreHID or DriverKit?](https://developer.apple.com/forums/thread/845599) (2026): Core HID and DriverKit are architecturally identical; approval delays; GameController matching uncertain.

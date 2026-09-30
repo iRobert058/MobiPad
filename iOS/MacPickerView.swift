@@ -1,21 +1,36 @@
 import MobiPadNetwork
+import MobiPadProtocol
 import SwiftUI
 
-/// Lists the Macs running MobiPad on this network (FR-01).
+/// Asks for the player's name and lists the Macs running MobiPad on this network (FR-01).
 struct MacPickerView: View {
-    let model: AppModel
+    @Bindable var model: AppModel
 
     var body: some View {
         NavigationStack {
-            Group {
-                if model.macs.isEmpty {
-                    ContentUnavailableView(
-                        "Looking for Macs",
-                        systemImage: "desktopcomputer",
-                        description: Text("Open MobiPad on your Mac, and make sure both are on the same Wi-Fi network.")
-                    )
-                } else {
-                    List(model.macs) { mac in
+            List {
+                Section {
+                    TextField("Your name", text: $model.playerName)
+                        .textContentType(.nickname)
+                        .autocorrectionDisabled()
+                        .onChange(of: model.playerName) { _, name in
+                            if name.count > Message.maxNameLength {
+                                model.playerName = String(name.prefix(Message.maxNameLength))
+                            }
+                        }
+                } footer: {
+                    Text("Shown on the Mac, so you can tell the players apart.")
+                }
+
+                Section("Macs on this network") {
+                    if model.macs.isEmpty {
+                        ContentUnavailableView(
+                            "Looking for Macs",
+                            systemImage: "desktopcomputer",
+                            description: Text("Open MobiPad on your Mac, and make sure both are on the same Wi-Fi network.")
+                        )
+                    }
+                    ForEach(model.macs) { mac in
                         Button {
                             model.connect(to: mac)
                         } label: {
@@ -24,7 +39,7 @@ struct MacPickerView: View {
                     }
                 }
             }
-            .navigationTitle("Connect to a Mac")
+            .navigationTitle("MobiPad")
         }
         .onAppear { model.startBrowsing() }
     }

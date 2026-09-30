@@ -11,7 +11,7 @@ settings:
     SWIFT_VERSION: "6.0"
     # Your team ID (a free Personal Team works): Xcode → Settings → Accounts. Set it here,
     # because `xcodegen generate` overwrites a team picked in Xcode.
-    # DEVELOPMENT_TEAM: XXXXXXXXXX
+    DEVELOPMENT_TEAM: 9DB5WS33K6
 
 packages:
   MobiPadKit:
@@ -54,6 +54,8 @@ targets:
         product: MobiPadNetwork
       - package: MobiPadKit
         product: MobiPadDSU
+      - package: MobiPadKit
+        product: MobiPadKeyboard
     settings:
       base:
         ENABLE_HARDENED_RUNTIME: YES

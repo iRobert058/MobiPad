@@ -24,10 +24,60 @@ struct StatusView: View {
             Divider()
             serviceStatus
             Divider()
+            testPlayerSettings
+            Divider()
+            keyboardSettings
+            Divider()
+            HStack {
+                Text(approvedPhonesText).font(.caption).foregroundStyle(.secondary)
+                Spacer()
+                Button("Forget") { model.forgetApprovedPhones() }
+                    .disabled(model.approvedPhones.isEmpty)
+            }
             Button("Quit MobiPad") { NSApplication.shared.terminate(nil) }
         }
         .padding()
         .frame(width: 340)
+    }
+
+    private var approvedPhonesText: String {
+        switch model.approvedPhones.count {
+        case 0: "No approved phones"
+        case 1: "1 approved phone"
+        case let count: "\(count) approved phones"
+        }
+    }
+
+    @ViewBuilder private var testPlayerSettings: some View {
+        Toggle("Test controller", isOn: Binding(
+            get: { model.testPlayerSlot != nil },
+            set: { model.setTestPlayerRunning($0) }
+        ))
+        if let slot = model.testPlayerSlot {
+            Text("Player \(slot + 1) circles its sticks and presses A, B, X and Y in turn, so you can check an emulator sees MobiPad without a phone. Turn it off before mapping buttons.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        } else if model.testPlayerFailed {
+            Text("All \(ControllerHost.slotCount) player slots are taken.")
+                .font(.caption)
+                .foregroundStyle(.orange)
+        }
+    }
+
+    @ViewBuilder private var keyboardSettings: some View {
+        Toggle("Player 1 as keyboard (for Ryujinx)", isOn: Binding(
+            get: { model.isKeyboardEnabled },
+            set: { model.setKeyboardEnabled($0) }
+        ))
+        if model.keyboardNeedsPermission {
+            Text("Allow MobiPad under System Settings → Privacy & Security → Accessibility, then turn this on again.")
+                .font(.caption)
+                .foregroundStyle(.orange)
+        } else if model.isKeyboardEnabled {
+            Text("Player 1's buttons now type keys in whichever app is in front.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
     }
 
     @ViewBuilder private var serviceStatus: some View {
@@ -35,7 +85,7 @@ struct StatusView: View {
         case .starting:
             Label("Starting…", systemImage: "hourglass")
         case .running:
-            Label("In Dolphin, add a DSU server at 127.0.0.1, port \(String(DSU.defaultPort)) (Controllers → Alternate Input Sources).", systemImage: "info.circle")
+            Label("In Dolphin or Cemu, add a DSU server at 127.0.0.1, port \(String(DSU.defaultPort)).", systemImage: "info.circle")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         case .failed(let message):
