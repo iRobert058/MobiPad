@@ -40,6 +40,10 @@ You need Xcode (free, from the Mac App Store) and your Apple ID. A paid develope
    To try the iPhone app without a phone, run the **MobiPad** scheme on an iPhone Simulator instead. It finds the Mac app the same way. Turn the Simulator to landscape with ⌘→.
 5. In the iPhone app, type your name and pick your Mac. The first time, the Mac asks **"Allow … to connect?"**. After you click Allow, the phone shows up as a player and is remembered from then on.
 
+### Changing the controller layout
+
+Tap **Edit Layout** at the top of the controller screen. Drag a control to move it, and pinch it to resize it. For a small button, tap it and use the slider, or pinch on an empty part of the screen. **Show/Hide** turns controls on and off, including L3, R3 and Home, which start off. The D-pad and A/B/X/Y move as one block each. **Done** saves the layout on the phone, **Cancel** throws the changes away, and **Reset** goes back to the standard layout.
+
 ### Checking an emulator without a phone
 
 Turn on **Test controller** in the Mac menu. It joins as a player that circles its sticks and presses A, B, X and Y in turn. In the emulator's controller settings, the DSU device's inputs should move (for Ryujinx: with the keyboard toggle on and the test controller as Player 1, keys get pressed). If that works but the phone doesn't, the problem is between the phone and the Mac. Turn the test controller off before mapping buttons, or it presses buttons while the emulator waits for yours.
@@ -131,6 +135,7 @@ Checked on this Mac without Xcode:
 Written, but not yet run on a device or in an emulator (the apps haven't been built yet):
 - iPhone layout (FR-03, UX-02), with LB/RB/LT/RT added for Mario Kart
 - multi-touch (FR-04) and haptics (FR-05)
+- layout editing (UX-03): checked in the Simulator that it draws correctly, but moving and resizing by touch haven't been tried
 - the Mac's menu: approval prompt, test screen (FR-08), test controller switch and keyboard output
 
 Not planned for now: tilt steering.

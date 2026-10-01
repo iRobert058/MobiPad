@@ -15,16 +15,24 @@ final class AppModel {
         didSet { UserDefaults.standard.set(playerName, forKey: Self.playerNameKey) }
     }
 
+    /// Where the controls sit on the controller screen (UX-03).
+    var layout: ControllerLayout {
+        didSet { UserDefaults.standard.set(try? JSONEncoder().encode(layout), forKey: Self.layoutKey) }
+    }
+
     private var browser: MacBrowser?
     private var link: ControllerLink?
     /// Ignores status updates from a link that has since been replaced.
     private var linkToken = UUID()
 
     private static let playerNameKey = "playerName"
+    private static let layoutKey = "controllerLayout"
     private static let identityKey = "identityKey"
 
     init() {
         playerName = UserDefaults.standard.string(forKey: Self.playerNameKey) ?? ""
+        layout = UserDefaults.standard.data(forKey: Self.layoutKey)
+            .flatMap { try? JSONDecoder().decode(ControllerLayout.self, from: $0) } ?? .standard
     }
 
     var statusText: String {

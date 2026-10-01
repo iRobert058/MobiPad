@@ -4,51 +4,57 @@ import SwiftUI
 import UIKit
 #endif
 
-/// The landscape controller layout (FR-03, UX-02). Each control is its own view with its own
-/// gesture, so SwiftUI tracks their touches independently and they can be used at the same time (FR-04).
+/// The landscape controller (FR-03, UX-02). Each control is its own view with its own gesture, so
+/// SwiftUI tracks their touches independently and they can be used at the same time (FR-04).
+///
+/// The controls go where the player's layout puts them. In edit mode they can be moved, resized and
+/// hidden (UX-03).
 struct ControllerView: View {
+    typealias Control = ControllerLayout.Control
+
     let model: AppModel
     @State private var state = ControllerState()
+    /// The layout being edited. Nil while playing.
+    @State private var draft: ControllerLayout?
+    @State private var selected: Control?
+    /// Where the latest drag on each control started, and where the control was then.
+    @State private var dragStarts: [Control: (touch: CGPoint, center: CGPoint)] = [:]
+    /// Where the latest pinch started, and the control's scale then.
+    @State private var pinchStart: (touch: CGPoint, scale: CGFloat)?
+
+    /// Dragged controls snap to steps of this fraction of the screen, so they line up.
+    private static let gridStep: CGFloat = 0.02
+
+    private var layout: ControllerLayout { draft ?? model.layout }
 
     var body: some View {
-        VStack(spacing: 12) {
-            HStack(spacing: 12) {
-                trigger("LT", \.leftTrigger)
-                button("LB", .leftShoulder)
-                Spacer()
-                button("RB", .rightShoulder)
-                trigger("RT", \.rightTrigger)
-            }
-            HStack {
-                VStack(spacing: 16) {
-                    ThumbStick(position: $state.leftStick)
-                    dpad
+        GeometryReader { proxy in
+            let area = proxy.size
+            ZStack {
+                if draft != nil {
+                    // Pinching empty space resizes the selected control, which small buttons need.
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture { selected = nil }
+                        .gesture(pinchGesture(selected))
                 }
-                Spacer()
-                VStack(spacing: 16) {
-                    HStack(spacing: 24) {
-                        button("View", .view)
-                        button("Menu", .menu)
-                    }
-                    Text(model.statusText)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Button("Disconnect", role: .destructive) { model.disconnect() }
-                        .font(.caption)
-                }
-                Spacer()
-                VStack(spacing: 16) {
-                    faceButtons
-                    ThumbStick(position: $state.rightStick)
+                ForEach(Control.allCases.filter { layout[$0].isShown }) { control in
+                    placed(control, in: area)
                 }
             }
         }
+        .overlay(alignment: .top) {
+            if draft == nil { statusPanel } else { editPanel }
+        }
         .padding(16)
-        .onChange(of: state) { _, newState in model.send(newState) }
+        .onChange(of: state) { _, newState in
+            if draft == nil { model.send(newState) }
+        }
         // FR-05: a light tap whenever a button goes down.
         .sensoryFeedback(.impact(weight: .light), trigger: state.buttons) { old, new in
             !new.subtracting(old).isEmpty
         }
+        .sensoryFeedback(.selection, trigger: selected) { _, new in new != nil }
         #if os(iOS)
         .statusBarHidden()
         .persistentSystemOverlays(.hidden)
@@ -60,30 +66,230 @@ struct ControllerView: View {
         #endif
     }
 
-    private var faceButtons: some View {
-        VStack(spacing: 4) {
-            button("Y", .y)
-            HStack(spacing: 44) {
-                button("X", .x)
-                button("B", .b)
+    // MARK: - Panels
+
+    private var statusPanel: some View {
+        VStack(spacing: 8) {
+            Text(model.statusText)
+                .foregroundStyle(.secondary)
+            HStack(spacing: 20) {
+                Button("Edit Layout") { startEditing() }
+                Button("Disconnect", role: .destructive) { model.disconnect() }
             }
-            button("A", .a)
+        }
+        .font(.caption)
+    }
+
+    private var editPanel: some View {
+        VStack(spacing: 6) {
+            HStack(spacing: 16) {
+                Menu("Show/Hide") {
+                    ForEach(Control.allCases) { control in
+                        Toggle(control.name, isOn: isShown(control))
+                    }
+                }
+                Button("Reset") {
+                    withAnimation { draft = .standard }
+                    selected = nil
+                }
+                Button("Cancel") { stopEditing(saving: false) }
+                Button("Done") { stopEditing(saving: true) }
+                    .bold()
+            }
+            if let selected {
+                HStack {
+                    Text(selected.name)
+                    Slider(value: scale(of: selected), in: ControllerLayout.scales)
+                        .frame(width: 160)
+                }
+                .font(.caption)
+            } else {
+                Text("Drag a control to move it. Pinch or tap it to resize it.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    // MARK: - Editing
+
+    private func startEditing() {
+        draft = model.layout
+        // Release everything, so nothing stays pressed on the Mac while controls are being moved.
+        state = ControllerState()
+        model.send(state)
+    }
+
+    private func stopEditing(saving: Bool) {
+        if saving, let draft { model.layout = draft }
+        draft = nil
+        selected = nil
+    }
+
+    private func moveGesture(_ control: Control, in area: CGSize) -> some Gesture {
+        // Global, because the control moves along with the finger.
+        DragGesture(minimumDistance: 0, coordinateSpace: .global)
+            .onChanged { drag in
+                selected = control
+                // Keyed by where the touch started, so a drag the system cancelled (which never
+                // calls onEnded) can't leave a stale start behind.
+                let start: CGPoint
+                if let previous = dragStarts[control], previous.touch == drag.startLocation {
+                    start = previous.center
+                } else {
+                    start = center(of: control, in: area)
+                    dragStarts[control] = (drag.startLocation, start)
+                }
+                let point = clamped(
+                    CGPoint(x: start.x + drag.translation.width, y: start.y + drag.translation.height),
+                    size: control.size(scale: layout[control].scale),
+                    in: area
+                )
+                draft?[control].center = CGPoint(x: snapped(point.x / area.width), y: snapped(point.y / area.height))
+            }
+    }
+
+    private func pinchGesture(_ control: Control?) -> some Gesture {
+        MagnifyGesture()
+            .onChanged { pinch in
+                guard let control else { return }
+                selected = control
+                // Keyed by where the pinch started, like the drag starts.
+                let start: CGFloat
+                if let pinchStart, pinchStart.touch == pinch.startLocation {
+                    start = pinchStart.scale
+                } else {
+                    start = layout[control].scale
+                    pinchStart = (pinch.startLocation, start)
+                }
+                draft?[control].scale = Self.limited(start * pinch.magnification)
+            }
+    }
+
+    private func isShown(_ control: Control) -> Binding<Bool> {
+        Binding(
+            get: { layout[control].isShown },
+            set: { shown in
+                draft?[control].isShown = shown
+                if !shown, selected == control { selected = nil }
+            }
+        )
+    }
+
+    private func scale(of control: Control) -> Binding<CGFloat> {
+        Binding(
+            get: { layout[control].scale },
+            set: { draft?[control].scale = Self.limited($0) }
+        )
+    }
+
+    private static func limited(_ scale: CGFloat) -> CGFloat {
+        min(max(scale, ControllerLayout.scales.lowerBound), ControllerLayout.scales.upperBound)
+    }
+
+    private func snapped(_ fraction: CGFloat) -> CGFloat {
+        (fraction / Self.gridStep).rounded() * Self.gridStep
+    }
+
+    // MARK: - Placing controls
+
+    private func placed(_ control: Control, in area: CGSize) -> some View {
+        let scale = layout[control].scale
+        let size = control.size(scale: scale)
+        let isSelected = selected == control
+        return view(for: control, scale: scale)
+            .frame(width: size.width, height: size.height)
+            .allowsHitTesting(draft == nil)
+            .overlay {
+                if draft != nil {
+                    RoundedRectangle(cornerRadius: 8)
+                        .strokeBorder(
+                            isSelected ? Color.accentColor : Color.secondary,
+                            style: StrokeStyle(lineWidth: isSelected ? 2 : 1, dash: [5, 4])
+                        )
+                        .contentShape(Rectangle())
+                        .gesture(moveGesture(control, in: area))
+                        .simultaneousGesture(pinchGesture(control))
+                }
+            }
+            .position(center(of: control, in: area))
+            .zIndex(isSelected ? 1 : 0)
+    }
+
+    /// Where the control goes on screen. A control near an edge is kept fully on screen, also on a
+    /// smaller iPhone than the one the layout was made on.
+    private func center(of control: Control, in area: CGSize) -> CGPoint {
+        let placement = layout[control]
+        return clamped(
+            CGPoint(x: placement.center.x * area.width, y: placement.center.y * area.height),
+            size: control.size(scale: placement.scale),
+            in: area
+        )
+    }
+
+    private func clamped(_ center: CGPoint, size: CGSize, in area: CGSize) -> CGPoint {
+        func clamp(_ value: CGFloat, half: CGFloat, length: CGFloat) -> CGFloat {
+            min(max(value, half), max(half, length - half))
+        }
+        return CGPoint(
+            x: clamp(center.x, half: size.width / 2, length: area.width),
+            y: clamp(center.y, half: size.height / 2, length: area.height)
+        )
+    }
+
+    @ViewBuilder
+    private func view(for control: Control, scale: CGFloat) -> some View {
+        let size = Metrics.button * scale
+        switch control {
+        case .leftStick: ThumbStick(position: $state.leftStick, radius: Metrics.stickRadius * scale)
+        case .rightStick: ThumbStick(position: $state.rightStick, radius: Metrics.stickRadius * scale)
+        case .dpad:
+            cross(
+                scale: scale,
+                top: button("▲", .dpadUp, size: size),
+                left: button("◀", .dpadLeft, size: size),
+                right: button("▶", .dpadRight, size: size),
+                bottom: button("▼", .dpadDown, size: size)
+            )
+        case .faceButtons:
+            cross(
+                scale: scale,
+                top: button("Y", .y, size: size),
+                left: button("X", .x, size: size),
+                right: button("B", .b, size: size),
+                bottom: button("A", .a, size: size)
+            )
+        case .leftTrigger: trigger("LT", \.leftTrigger, size: size)
+        case .leftShoulder: button("LB", .leftShoulder, size: size)
+        case .rightShoulder: button("RB", .rightShoulder, size: size)
+        case .rightTrigger: trigger("RT", \.rightTrigger, size: size)
+        case .view: button("View", .view, size: size)
+        case .menu: button("Menu", .menu, size: size)
+        case .home: button("Home", .home, size: size)
+        case .leftStickPress: button("L3", .leftStickPress, size: size)
+        case .rightStickPress: button("R3", .rightStickPress, size: size)
         }
     }
 
-    private var dpad: some View {
-        VStack(spacing: 4) {
-            button("▲", .dpadUp)
-            HStack(spacing: 44) {
-                button("◀", .dpadLeft)
-                button("▶", .dpadRight)
+    /// Four buttons in a plus shape: the D-pad and A/B/X/Y.
+    private func cross(
+        scale: CGFloat, top: PressableButton, left: PressableButton, right: PressableButton, bottom: PressableButton
+    ) -> some View {
+        VStack(spacing: Metrics.crossSpacing * scale) {
+            top
+            HStack(spacing: Metrics.button * scale) {
+                left
+                right
             }
-            button("▼", .dpadDown)
+            bottom
         }
     }
 
-    private func button(_ label: String, _ button: ControllerState.Buttons) -> PressableButton {
-        PressableButton(label: label, isPressed: Binding(
+    private func button(_ label: String, _ button: ControllerState.Buttons, size: CGFloat) -> PressableButton {
+        PressableButton(label: label, size: size, isPressed: Binding(
             get: { state.buttons.contains(button) },
             set: { pressed in
                 if pressed { state.buttons.insert(button) } else { state.buttons.remove(button) }
@@ -92,11 +298,36 @@ struct ControllerView: View {
     }
 
     /// Triggers are all-or-nothing on a touchscreen.
-    private func trigger(_ label: String, _ trigger: WritableKeyPath<ControllerState, UInt8>) -> PressableButton {
-        PressableButton(label: label, isPressed: Binding(
+    private func trigger(
+        _ label: String, _ trigger: WritableKeyPath<ControllerState, UInt8>, size: CGFloat
+    ) -> PressableButton {
+        PressableButton(label: label, size: size, isPressed: Binding(
             get: { state[keyPath: trigger] > 0 },
             set: { pressed in state[keyPath: trigger] = pressed ? .max : 0 }
         ))
+    }
+}
+
+/// Control sizes at scale 1.
+private enum Metrics {
+    static let button: CGFloat = 44
+    static let stickRadius: CGFloat = 50
+    /// Between the rows of the D-pad and A/B/X/Y.
+    static let crossSpacing: CGFloat = 4
+}
+
+private extension ControllerLayout.Control {
+    func size(scale: CGFloat) -> CGSize {
+        let size: CGSize = switch self {
+        case .leftStick, .rightStick:
+            CGSize(width: Metrics.stickRadius * 2, height: Metrics.stickRadius * 2)
+        case .dpad, .faceButtons:
+            CGSize(width: Metrics.button * 3, height: Metrics.button * 3 + Metrics.crossSpacing * 2)
+        case .leftTrigger, .leftShoulder, .rightShoulder, .rightTrigger,
+             .view, .menu, .home, .leftStickPress, .rightStickPress:
+            CGSize(width: Metrics.button, height: Metrics.button)
+        }
+        return CGSize(width: size.width * scale, height: size.height * scale)
     }
 }
 
@@ -107,6 +338,7 @@ struct ControllerView: View {
 /// cancels the touch (for example, when a notification comes in), so no button gets stuck.
 private struct PressableButton: View {
     let label: String
+    let size: CGFloat
     @Binding var isPressed: Bool
     @GestureState private var isTouched = false
     @State private var pressedAt: ContinuousClock.Instant?
@@ -117,9 +349,11 @@ private struct PressableButton: View {
 
     var body: some View {
         Text(label)
-            .font(.headline)
+            // Headline size at the standard button size.
+            .font(.system(size: size * 17 / 44, weight: .semibold))
+            .lineLimit(1)
             .minimumScaleFactor(0.5)
-            .frame(width: 44, height: 44)
+            .frame(width: size, height: size)
             .background(Circle().fill(isPressed ? Color.accentColor : Color.secondary.opacity(0.3)))
             .gesture(
                 DragGesture(minimumDistance: 0)
@@ -158,9 +392,8 @@ private struct PressableButton: View {
 /// An analog stick: the knob follows the finger within the base and springs back on release.
 private struct ThumbStick: View {
     @Binding var position: ControllerState.Stick
+    let radius: CGFloat
     @GestureState private var touch: CGPoint?
-
-    private let radius: CGFloat = 50
 
     var body: some View {
         let offset = knobOffset
