@@ -52,6 +52,9 @@ struct ControllerView: View {
         #if os(iOS)
         .statusBarHidden()
         .persistentSystemOverlays(.hidden)
+        // System swipes (Control Center, Home) need a second swipe, so a thumb sliding off a control
+        // doesn't open them mid-game.
+        .defersSystemGestures(on: .all)
         .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
         .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
         #endif
@@ -97,12 +100,20 @@ struct ControllerView: View {
     }
 }
 
-/// A button that stays pressed for as long as a finger is on it. `@GestureState` resets on its own
-/// when the system cancels the touch (for example, when a notification comes in), so no button gets stuck.
+/// A button that stays pressed for as long as a finger is on it, and at least `minimumPress`.
+///
+/// iOS can hold back a lone touch and then deliver its start and end at the same moment (seen on the
+/// right half of an iPhone 16 Pro in landscape), so a quick tap would otherwise never show up as pressed. `@GestureState` resets on its own when the system
+/// cancels the touch (for example, when a notification comes in), so no button gets stuck.
 private struct PressableButton: View {
     let label: String
     @Binding var isPressed: Bool
     @GestureState private var isTouched = false
+    @State private var pressedAt: ContinuousClock.Instant?
+    @State private var pendingRelease: Task<Void, Never>?
+
+    /// Long enough for an emulator polling at 60 Hz to see a tap.
+    private static let minimumPress: Duration = .milliseconds(50)
 
     var body: some View {
         Text(label)
@@ -113,8 +124,34 @@ private struct PressableButton: View {
             .gesture(
                 DragGesture(minimumDistance: 0)
                     .updating($isTouched) { _, touched, _ in touched = true }
+                    .onChanged { _ in press() }
+                    .onEnded { _ in release() }
             )
-            .onChange(of: isTouched) { _, touched in isPressed = touched }
+            // A cancelled touch doesn't call onEnded.
+            .onChange(of: isTouched) { _, touched in
+                if !touched { release() }
+            }
+    }
+
+    private func press() {
+        guard pressedAt == nil else { return }
+        pendingRelease?.cancel()
+        pressedAt = .now
+        isPressed = true
+    }
+
+    private func release() {
+        guard let pressedAt else { return }
+        self.pressedAt = nil
+        let remaining = Self.minimumPress - (.now - pressedAt)
+        guard remaining > .zero else {
+            isPressed = false
+            return
+        }
+        pendingRelease = Task {
+            try? await Task.sleep(for: remaining)
+            if !Task.isCancelled { isPressed = false }
+        }
     }
 }
 

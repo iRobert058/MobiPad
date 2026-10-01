@@ -35,7 +35,9 @@ You need Xcode (free, from the Mac App Store) and your Apple ID. A paid develope
    ```
 2. In Xcode → Settings → Accounts, sign in with your Apple ID. That creates a free "Personal Team". Put its team ID in `project.yml` under `DEVELOPMENT_TEAM`, then run `xcodegen generate` again.
 3. Run the **MobiPadCompanion** scheme. A controller icon appears in the menu bar. Allow local network access when macOS asks.
-4. Connect your iPhone by cable, turn on Developer Mode on it (Settings → Privacy & Security), and run the **MobiPad** scheme on it. Apps from a free account stop working after 7 days; running them again from Xcode renews them.
+4. Connect your iPhone by cable, turn on Developer Mode on it (Settings → Privacy & Security), and run the **MobiPad** scheme on it. The first time, the iPhone won't open the app ("Untrusted Developer"): go to Settings → General → VPN & Device Management, tap your Apple ID under Developer App, and tap Trust. Apps from a free account stop working after 7 days; running them again from Xcode renews them.
+
+   To try the iPhone app without a phone, run the **MobiPad** scheme on an iPhone Simulator instead. It finds the Mac app the same way. Turn the Simulator to landscape with ⌘→.
 5. In the iPhone app, type your name and pick your Mac. The first time, the Mac asks **"Allow … to connect?"**. After you click Allow, the phone shows up as a player and is remembered from then on.
 
 ### Checking an emulator without a phone
