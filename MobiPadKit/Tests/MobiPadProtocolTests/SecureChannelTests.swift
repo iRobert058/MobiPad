@@ -37,6 +37,14 @@ struct SecureChannelTests {
         #expect(throws: (any Error).self) { try macChannel().open(impostor.seal(.goodbye)) }
     }
 
+    /// Neither side accepts what it sealed itself, so the Mac's welcome can't be sent back to it.
+    @Test func sealedMessagesCantBeReflected() throws {
+        let mac = try macChannel()
+        let phone = try phoneChannel()
+        #expect(throws: (any Error).self) { try mac.open(mac.seal(.slot(0))) }
+        #expect(throws: (any Error).self) { try phone.open(phone.seal(.goodbye)) }
+    }
+
     @Test func tamperedMessagesAreRejected() throws {
         var box = try phoneChannel().seal(.goodbye)
         box[box.count - 1] ^= 0x01

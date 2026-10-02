@@ -26,7 +26,8 @@ public enum Message: Equatable, Sendable {
     case sealed(Data)
 
     public static let magic: [UInt8] = Array("MP".utf8)
-    public static let version: UInt8 = 2
+    /// 3: separate session keys per direction. Older apps can't talk to newer ones.
+    public static let version: UInt8 = 3
     public static let keySize = 32
     public static let maxNameLength = 32
 

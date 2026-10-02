@@ -20,8 +20,12 @@ packages:
 targets:
   MobiPad:
     type: application
+    # A shared scheme, so Xcode always lists the app to run.
+    scheme: {}
     platform: iOS
-    sources: [iOS]
+    sources:
+      - iOS
+      - Shared/AppIcon.icon
     dependencies:
       - package: MobiPadKit
         product: MobiPadProtocol
@@ -45,8 +49,12 @@ targets:
 
   MobiPadCompanion:
     type: application
+    # A shared scheme, so Xcode always lists the app to run.
+    scheme: {}
     platform: macOS
-    sources: [macOS]
+    sources:
+      - macOS
+      - Shared/AppIcon.icon
     dependencies:
       - package: MobiPadKit
         product: MobiPadProtocol
