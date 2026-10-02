@@ -4,9 +4,9 @@ Branch: `tilt-controls` (made from `main` on 2026-10-03). Nothing is pushed or m
 
 ## Progress
 
-- **Done:** research; plan; step 1 (motion in the state and wire format); step 2 (Core Motion → landscape frame, `MotionConversion.swift`, tests).
-- **Working on:** step 3 (DSU packets carry the motion in Dolphin's conventions).
-- **Next step:** fill the six motion fields in `DSU.padData` from `state.motion`, with tests that read the packet the way Dolphin does.
+- **Done:** research; plan; step 1 (motion in the state and wire format); step 2 (Core Motion → landscape frame); step 3 (DSU packets carry motion in Dolphin's conventions, `DSUMotionTests`, end-to-end test).
+- **Working on:** step 4 (Wii Remote and Classic Controller profiles from Set Up Dolphin).
+- **Next step:** extend `DolphinSetup` to write `Profiles/Wiimote/MobiPad Wii Remote Player N.ini` and `MobiPad Classic Player N.ini`, with tests that check every key and input name against Dolphin's source; update the Mac menu text.
 - **Half-finished or broken:** nothing.
 
 ## How input gets to Dolphin today
