@@ -4,9 +4,9 @@ Branch: `tilt-controls` (made from `main` on 2026-10-03). Nothing is pushed or m
 
 ## Progress
 
-- **Done:** research; plan; steps 1–4 (motion in the state, Core Motion conversion, DSU output, Dolphin profiles); step 5 (controller choice on the start screen and the controller screen; Wii Remote layout in `ControllerLayout`/`ControllerView`; the layout editor works per controller).
-- **Working on:** step 6 (tilt: Core Motion in Wii Remote mode, sent with the buttons).
-- **Next step:** add `iOS/TiltSensor.swift` (Core Motion at 60 Hz, landscape direction from the window scene), merge its motion into what `AppModel` sends, start it only in Wii Remote mode outside the layout editor, and show a steering indicator.
+- **Done:** research; plan; steps 1–5 (motion in the state, conversion, DSU output, Dolphin profiles, controller choice and Wii Remote layout); step 6 (`iOS/TiltSensor.swift`: Core Motion at 60 Hz in Wii Remote mode, sent with the buttons, steering indicator).
+- **Working on:** step 7 (show each player's tilt in the Mac menu).
+- **Next step:** in `macOS/StatusView.swift`, show a small steering indicator in a player's row when their state has motion.
 - **Half-finished or broken:** nothing.
 
 ## How input gets to Dolphin today
@@ -54,6 +54,11 @@ The phone reports its motion like a normal landscape controller. The Wii Remote 
 - **Wii Remote layout:** D-pad and A on the left, 1 and 2 (larger) on the right, B top left (where the trigger is when held sideways), and −, Home, + in the middle. The Wii Remote controls are separate controls in the same saved layout, so each controller keeps its own positions, and the editor's Show/Hide and Reset only touch the current controller. Switching controllers releases every button.
 - **The controller can be chosen on the start screen and switched on the controller screen** (a menu next to Edit Layout), so there's no need to disconnect to switch.
 - **I didn't look at the new layout in the Simulator,** because the Simulator keeps its data outside the project folder. I checked the geometry by calculation instead: no controls overlap on the smallest or a large iPhone.
+
+- **Tilt only runs in Wii Remote mode on the controller screen,** and pauses in the layout editor. When it stops, the phone sends one state without motion, so Dolphin sees the motion return to zero rather than freeze at the last reading.
+- **Motion is kept out of the controller screen's own state.** `AppModel` combines the last buttons with the latest tilt, so 60 readings a second don't redraw the whole screen; only the small steering indicator redraws.
+- **No permission prompt is needed:** reading the accelerometer and gyroscope with `CMMotionManager` doesn't require one (only activity and step counting do), so `Info.plist` is unchanged.
+- **Which way round the phone is held** comes from the window scene's interface orientation, read with every sample. Both landscape directions are supported, as before.
 
 ## For you to decide
 

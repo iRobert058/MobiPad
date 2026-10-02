@@ -25,7 +25,13 @@ struct ControllerView: View {
     /// Dragged controls snap to steps of this fraction of the screen, so they line up.
     private static let gridStep: CGFloat = 0.02
 
+    /// The phone's motion sensors, read only in the Wii Remote layout.
+    @State private var tilt = TiltSensor()
+
     private var layout: ControllerLayout { draft ?? model.layout }
+
+    /// Tilt is part of the Wii Remote, and pauses while the layout is being edited.
+    private var usesTilt: Bool { model.controllerKind == .wiiRemote && draft == nil }
 
     /// The controls of the controller the phone acts as.
     private var controls: [Control] {
@@ -60,6 +66,14 @@ struct ControllerView: View {
             selected = nil
             state = ControllerState()
         }
+        .onChange(of: usesTilt, initial: true) { _, usesTilt in
+            if usesTilt {
+                tilt.start { [model] motion in model.send(motion: motion) }
+            } else {
+                tilt.stop()
+            }
+        }
+        .onDisappear { tilt.stop() }
         // FR-05: a light tap whenever a button goes down.
         .sensoryFeedback(.impact(weight: .light), trigger: state.buttons) { old, new in
             !new.subtracting(old).isEmpty
@@ -80,8 +94,13 @@ struct ControllerView: View {
 
     private var statusPanel: some View {
         VStack(spacing: 8) {
-            Text(model.statusText)
-                .foregroundStyle(.secondary)
+            HStack(spacing: 6) {
+                if model.controllerKind == .wiiRemote {
+                    TiltIndicator(tilt: tilt)
+                }
+                Text(model.statusText)
+            }
+            .foregroundStyle(.secondary)
             HStack(spacing: 20) {
                 Menu(model.controllerKind.name) {
                     Picker("Controller", selection: Binding(
@@ -460,5 +479,29 @@ private struct ThumbStick: View {
         let y = touch.y - radius
         let scale = min(1, radius / max(hypot(x, y), 1))
         return CGSize(width: x * scale, height: y * scale)
+    }
+}
+
+/// A steering wheel that turns as the phone is tilted, so the player can see tilt is working.
+private struct TiltIndicator: View {
+    let tilt: TiltSensor
+
+    var body: some View {
+        if !tilt.isAvailable {
+            Text("No tilt on this device")
+        } else {
+            Image(systemName: "steeringwheel")
+                .rotationEffect(.radians(steeringAngle))
+                .accessibilityLabel("Tilt")
+        }
+    }
+
+    /// How far the phone is turned like a steering wheel, clockwise positive. Zero while it lies
+    /// nearly flat, where the angle would only be noise.
+    private var steeringAngle: Double {
+        guard let acceleration = tilt.motion?.acceleration,
+              hypot(acceleration.x, acceleration.y) > 0.35
+        else { return 0 }
+        return Double(atan2(-acceleration.x, acceleration.y))
     }
 }

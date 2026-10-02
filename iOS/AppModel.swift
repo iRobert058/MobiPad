@@ -32,6 +32,10 @@ final class AppModel {
 
     private var browser: MacBrowser?
     private var link: ControllerLink?
+    /// The buttons and sticks last sent, so tilt can be sent along with them.
+    @ObservationIgnored private var lastState = ControllerState()
+    /// The phone's tilt in the Wii Remote layout. Nil otherwise.
+    @ObservationIgnored private var motion: ControllerState.Motion?
     /// Ignores status updates from a link that has since been replaced.
     private var linkToken = UUID()
 
@@ -98,6 +102,19 @@ final class AppModel {
     }
 
     func send(_ state: ControllerState) {
+        lastState = state
+        sendCurrentState()
+    }
+
+    /// Sends the phone's tilt with the buttons last sent. Nil stops sending motion.
+    func send(motion: ControllerState.Motion?) {
+        self.motion = motion
+        sendCurrentState()
+    }
+
+    private func sendCurrentState() {
+        var state = lastState
+        state.motion = motion
         link?.send(state)
     }
 
