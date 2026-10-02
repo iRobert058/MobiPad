@@ -4,9 +4,9 @@ Branch: `tilt-controls` (made from `main` on 2026-10-03). Nothing is pushed or m
 
 ## Progress
 
-- **Done:** research; this plan.
-- **Working on:** step 1 (motion in the controller state and the wire format).
-- **Next step:** add `ControllerState.Motion`, encode it as an optional block after the 16-byte state, with tests.
+- **Done:** research; plan; step 1 (`ControllerState.Motion`, optional 24-byte motion block after the 16-byte state, tests).
+- **Working on:** step 2 (turning Core Motion readings into the landscape controller frame).
+- **Next step:** add the pure conversion function in MobiPadProtocol with tests for both landscape directions.
 - **Half-finished or broken:** nothing.
 
 ## How input gets to Dolphin today
