@@ -42,9 +42,18 @@ You need Xcode (free, from the Mac App Store) and your Apple ID. A paid develope
    To try the iPhone app without a phone, run the **MobiPad** scheme on an iPhone Simulator instead. It finds the Mac app the same way. Turn the Simulator to landscape with ⌘→.
 5. In the iPhone app, type your name and pick your Mac. The first time, the Mac asks **"Allow … to connect?"**. After you click Allow, the phone shows up as a player and is remembered from then on.
 
+### Classic Controller or Wii Remote
+
+Choose the controller on the start screen, or with the menu next to **Edit Layout** on the controller screen:
+
+- **Classic Controller:** two sticks, A/B/X/Y, shoulder buttons and triggers. Works with every emulator, as before.
+- **Wii Remote:** a Wii Remote held sideways (D-pad, A, B, 1, 2, −, Home, +), steered by tilting the phone. For Wii games in Dolphin; see below. The steering wheel next to the player name turns as you tilt, so you can see tilt is working.
+
+Wii Remote mode needs the Mac app from the same version. An older Mac app ignores the phone while it tilts.
+
 ### Changing the controller layout
 
-Tap **Edit Layout** at the top of the controller screen. Drag a control to move it, and pinch it to resize it. For a small button, tap it and use the slider, or pinch on an empty part of the screen. **Show/Hide** turns controls on and off, including L3, R3 and Home, which start off. The D-pad and A/B/X/Y move as one block each. **Done** saves the layout on the phone, **Cancel** throws the changes away, and **Reset** goes back to the standard layout.
+Tap **Edit Layout** at the top of the controller screen. Drag a control to move it, and pinch it to resize it. For a small button, tap it and use the slider, or pinch on an empty part of the screen. **Show/Hide** turns controls on and off, including L3, R3 and Home, which start off. The D-pad and A/B/X/Y move as one block each. **Done** saves the layout on the phone, **Cancel** throws the changes away, and **Reset** goes back to the standard layout. The Classic Controller and the Wii Remote each keep their own layout; Show/Hide and Reset only change the one on screen.
 
 ### Checking an emulator without a phone
 
@@ -52,10 +61,11 @@ Turn on **Test controller** in the Mac menu. It joins as a player that circles i
 
 ### Dolphin (Mario Kart Wii)
 
-1. In the Mac menu, click **Set Up Dolphin**. It adds MobiPad to Dolphin as a DSU server, if it isn't there yet, and adds a GameCube controller profile for each player. It doesn't change your current controller settings. If the server has to be added while Dolphin is open, it asks you to quit Dolphin first, because Dolphin overwrites its settings when it quits.
+1. In the Mac menu, click **Set Up Dolphin**. It adds MobiPad to Dolphin as a DSU server, if it isn't there yet, and adds three profiles for each player: a GameCube controller, a Wii Remote with tilt, and a Classic Controller. It doesn't change your current controller settings. If the server has to be added while Dolphin is open, it asks you to quit Dolphin first, because Dolphin overwrites its settings when it quits.
 2. In Dolphin, open **Controllers**, set Port 1 to **Standard Controller**, click **Configure**, pick **MobiPad Player 1** under Profile, and click **Load**. For more players, load MobiPad Player 2 on Port 2, and so on.
+3. For a Wii controller instead, set **Wii Remote 1** to **Emulated Wii Remote**, click **Configure**, and load **MobiPad Wii Remote Player 1** (phone on Wii Remote) or **MobiPad Classic Player 1** (phone on Classic Controller). Wii Remote 2 gets Player 2, and so on.
 
-The profiles match buttons by name:
+The GameCube profiles match buttons by name:
 
 | Phone | GameCube | | Phone | GameCube |
 |---|---|---|---|---|
@@ -66,7 +76,11 @@ The profiles match buttons by name:
 
 LB, View, Home, L3 and R3 aren't used. To change a button, remap it in Dolphin and save the profile under another name, because Set Up Dolphin overwrites the MobiPad profiles.
 
-**By hand**, for example for a Classic Controller: in Controllers → **Alternate Input Sources**, enable **DSU Client** and add a server: IP `127.0.0.1`, port `26760`. Configure the emulated controller, pick the DSU device, then map each input by clicking it and pressing the matching button on the phone. Dolphin uses PlayStation names: **Cross = A, Circle = B, Square = X, Triangle = Y, L1/R1 = LB/RB, L2/R2 = LT/RT**. DSU device 0 is Player 1, device 1 is Player 2, and so on.
+The **Wii Remote** profiles use the phone's Wii Remote layout button for button (A, B, 1, 2, −, Home, + and the D-pad). They map the phone's motion to the Wii Remote's accelerometer and gyroscope (Motion Input), and turn on **Sideways Wii Remote**. Hold the phone like a steering wheel, screen toward you: tilting it steers, like a Wii Remote in a Wii Wheel, and the phone's left end is the remote's IR end. Shaking works too, for Mario Kart's tricks and wheelies.
+
+The **Classic Controller** profiles match buttons by name: A, B, X, Y; LB/RB are L/R, LT/RT are ZL/ZR, View is −, Menu is +, and Home, both sticks and the D-pad map directly. No tilt.
+
+**By hand**, for example for a Nunchuk: in Controllers → **Alternate Input Sources**, enable **DSU Client** and add a server: IP `127.0.0.1`, port `26760`. Configure the emulated controller, pick the DSU device, then map each input by clicking it and pressing the matching button on the phone. Dolphin uses PlayStation names: **Cross = A, Circle = B, Square = X, Triangle = Y, L1/R1 = LB/RB, L2/R2 = LT/RT**. DSU device 0 is Player 1, device 1 is Player 2, and so on.
 
 ### Cemu
 
@@ -122,6 +136,7 @@ The tests include real UDP round-trips on localhost:
 - reconnecting, timeouts and latency
 - an impostor with a copied public key
 - a button press travelling all the way to a Dolphin-style DSU client
+- tilt from the phone reaching that client as DSU motion
 
 With only the Command Line Tools installed (no Xcode), point `swift test` at Swift Testing:
 
@@ -143,7 +158,8 @@ Done, and tested in the package:
 - **DSU for Dolphin and Cemu.**
 - **Keyboard key mapping for Ryujinx.**
 - **Test controller in the Mac menu.**
-- **Set Up Dolphin (UX-01):** the DSU server entry and the GameCube profiles. Not yet loaded in Dolphin itself.
+- **Set Up Dolphin (UX-01):** the DSU server entry and the GameCube, Wii Remote and Classic Controller profiles. Not yet loaded in Dolphin itself.
+- **Tilt (Wii Remote mode):** the motion in the wire format, turning Core Motion readings into the controller's axes, the DSU motion fields as Dolphin reads them (including its Sideways option), and the profiles' key and input names against Dolphin's source. Not yet tried on a device or in Dolphin; see [TILT_NOTES.md](TILT_NOTES.md).
 
 Checked on this Mac without Xcode:
 - `project.yml` generates a valid Xcode project (app IDs, OS versions, package links).
@@ -155,5 +171,3 @@ Written, but not yet run on a device or in an emulator (the apps haven't been bu
 - layout editing (UX-03): checked in the Simulator that it draws correctly, but moving and resizing by touch haven't been tried
 - dark mode (UX-05): follows the phone, or Light or Dark from the button at the top of the start screen. Checked in the Simulator, including switching back to following the phone
 - the Mac's menu: approval prompt, test screen (FR-08), test controller switch and keyboard output
-
-Not planned for now: tilt steering.

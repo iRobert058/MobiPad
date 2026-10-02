@@ -11,7 +11,9 @@ final class TiltSensor {
     /// The latest reading, for the steering indicator. Nil while stopped.
     private(set) var motion: ControllerState.Motion?
 
-    @ObservationIgnored private let manager = CMMotionManager()
+    /// Apple recommends one motion manager per app, and SwiftUI may create spare sensors.
+    private static let manager = CMMotionManager()
+    private var manager: CMMotionManager { Self.manager }
     @ObservationIgnored private var onUpdate: (@MainActor (ControllerState.Motion?) -> Void)?
 
     /// False in the Simulator and on devices without a gyroscope.
@@ -19,7 +21,9 @@ final class TiltSensor {
 
     /// Calls `onUpdate` with every reading, and with nil once stopped.
     func start(onUpdate: @escaping @MainActor (ControllerState.Motion?) -> Void) {
-        guard manager.isDeviceMotionAvailable, !manager.isDeviceMotionActive else { return }
+        guard manager.isDeviceMotionAvailable else { return }
+        // Takes over the shared manager, in case an earlier sensor left it running.
+        manager.stopDeviceMotionUpdates()
         self.onUpdate = onUpdate
         manager.deviceMotionUpdateInterval = 1.0 / 60
         manager.startDeviceMotionUpdates(to: .main) { [weak self] data, _ in

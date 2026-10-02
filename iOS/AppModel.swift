@@ -90,6 +90,8 @@ final class AppModel {
         }
         self.link = link
         connectedMac = mac
+        lastState = ControllerState()
+        motion = nil
         link.connect()
     }
 
@@ -99,6 +101,8 @@ final class AppModel {
         linkToken = UUID()
         connectedMac = nil
         status = .disconnected
+        lastState = ControllerState()
+        motion = nil
     }
 
     func send(_ state: ControllerState) {
