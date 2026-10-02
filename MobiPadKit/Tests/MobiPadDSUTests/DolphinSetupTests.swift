@@ -19,14 +19,21 @@ struct DolphinSetupTests {
         try text.write(to: config.appending(path: path), atomically: true, encoding: .utf8)
     }
 
+    /// Every profile MobiPad writes, in order: GameCube, then Wii Remote, then Classic Controller.
+    static let allProfileNames = (1...4).map { "MobiPad Player \($0)" }
+        + (1...4).map { "MobiPad Wii Remote Player \($0)" }
+        + (1...4).map { "MobiPad Classic Player \($0)" }
+
     @Test func addsTheServerAndAProfilePerPlayer() throws {
         let outcome = try DolphinSetup.install(configDirectory: config) { false }
 
-        let names = ["MobiPad Player 1", "MobiPad Player 2", "MobiPad Player 3", "MobiPad Player 4"]
-        #expect(outcome == .installed(profileNames: names))
+        #expect(outcome == .installed(profileNames: Self.allProfileNames))
         #expect(try read("DSUClient.ini") == "[Server]\nEntries = MobiPad:127.0.0.1:26760;\nEnabled = True\n")
-        for (slot, name) in names.enumerated() {
-            #expect(try read("Profiles/GCPad/\(name).ini").contains("Device = DSUClient/\(slot)/MobiPad\n"))
+        for slot in 0..<4 {
+            let device = "Device = DSUClient/\(slot)/MobiPad\n"
+            #expect(try read("Profiles/GCPad/MobiPad Player \(slot + 1).ini").contains(device))
+            #expect(try read("Profiles/Wiimote/MobiPad Wii Remote Player \(slot + 1).ini").contains(device))
+            #expect(try read("Profiles/Wiimote/MobiPad Classic Player \(slot + 1).ini").contains(device))
         }
     }
 
@@ -53,9 +60,10 @@ struct DolphinSetupTests {
 
         let outcome = try DolphinSetup.install(configDirectory: config) { true }
 
-        #expect(outcome == .installed(profileNames: (1...4).map { "MobiPad Player \($0)" }))
+        #expect(outcome == .installed(profileNames: Self.allProfileNames))
         #expect(try read("DSUClient.ini") == settings)
         #expect(try read("Profiles/GCPad/MobiPad Player 2.ini").contains("Device = DSUClient/1/Phone\n"))
+        #expect(try read("Profiles/Wiimote/MobiPad Wii Remote Player 2.ini").contains("Device = DSUClient/1/Phone\n"))
     }
 
     @Test func changesNothingWhileDolphinIsOpen() throws {
@@ -90,6 +98,83 @@ struct DolphinSetupTests {
         #expect(Set(used).isSubset(of: dolphinInputs))
         #expect(profile.contains("Buttons/A = `Cross`\n"))
         #expect(profile.contains("Main Stick/Calibration = 100.00\n"))
+    }
+
+    /// The inputs Dolphin's DSU client creates (DualShockUDPClient.cpp), motion included.
+    static let dsuInputs: Set<String> = [
+        "Pad W", "Pad S", "Pad E", "Pad N", "Square", "Cross", "Circle", "Triangle", "L1", "R1", "L2", "R2",
+        "L3", "R3", "Share", "Options", "PS", "Touch Button",
+        "Left X-", "Left X+", "Left Y-", "Left Y+", "Right X-", "Right X+", "Right Y-", "Right Y+",
+        "Accel Up", "Accel Down", "Accel Left", "Accel Right", "Accel Forward", "Accel Backward",
+        "Gyro Pitch Up", "Gyro Pitch Down", "Gyro Roll Left", "Gyro Roll Right", "Gyro Yaw Left", "Gyro Yaw Right",
+    ]
+
+    /// Profile keys of an emulated Wii Remote, from Dolphin's WiimoteEmu.h, IMUAccelerometer.cpp,
+    /// IMUGyroscope.cpp and Extension/Classic.h. A misspelled key would be silently ignored.
+    static let wiimoteKeys: Set<String> = {
+        var keys: Set<String> = ["Device", "Extension", "Options/Sideways Wiimote", "Options/Upright Wiimote"]
+        for button in ["A", "B", "1", "2", "-", "+", "Home"] { keys.insert("Buttons/\(button)") }
+        for direction in ["Up", "Down", "Left", "Right"] {
+            keys.insert("D-Pad/\(direction)")
+            keys.insert("Classic/D-Pad/\(direction)")
+            keys.insert("Classic/Left Stick/\(direction)")
+            keys.insert("Classic/Right Stick/\(direction)")
+        }
+        for direction in ["Up", "Down", "Left", "Right", "Forward", "Backward"] { keys.insert("IMUAccelerometer/\(direction)") }
+        for direction in ["Pitch Up", "Pitch Down", "Roll Left", "Roll Right", "Yaw Left", "Yaw Right"] {
+            keys.insert("IMUGyroscope/\(direction)")
+        }
+        for button in ["A", "B", "X", "Y", "ZL", "ZR", "-", "+", "Home"] { keys.insert("Classic/Buttons/\(button)") }
+        for trigger in ["L", "R", "L-Analog", "R-Analog"] { keys.insert("Classic/Triggers/\(trigger)") }
+        keys.formUnion(["Classic/Left Stick/Calibration", "Classic/Right Stick/Calibration"])
+        return keys
+    }()
+
+    /// The `Key = Value` lines of a profile.
+    static func settings(_ profile: String) -> [String: String] {
+        var settings: [String: String] = [:]
+        for line in profile.split(separator: "\n") where line.contains(" = ") {
+            let parts = line.split(separator: " = ", maxSplits: 1)
+            settings[String(parts[0])] = String(parts[1])
+        }
+        return settings
+    }
+
+    /// The input a mapping names, without its backticks.
+    static func input(_ value: String) -> String? {
+        value.hasPrefix("`") && value.hasSuffix("`") ? String(value.dropFirst().dropLast()) : nil
+    }
+
+    @Test func wiiRemoteProfileUsesOnlyNamesDolphinKnows() {
+        let settings = Self.settings(DolphinSetup.wiiRemoteProfile(slot: 0, serverName: "MobiPad"))
+
+        #expect(Set(settings.keys).isSubset(of: Self.wiimoteKeys))
+        #expect(Set(settings.values.compactMap(Self.input)).isSubset(of: Self.dsuInputs))
+        #expect(settings.values.compactMap(Self.input).count == 23)
+        #expect(settings["Options/Sideways Wiimote"] == "True")
+        #expect(settings["Extension"] == "None")
+    }
+
+    /// Like Dolphin's own defaults: each Wii Remote motion direction reads the DSU input of the same name.
+    @Test func wiiRemoteMotionMapsOneToOne() {
+        let settings = Self.settings(DolphinSetup.wiiRemoteProfile(slot: 0, serverName: "MobiPad"))
+        for direction in ["Up", "Down", "Left", "Right", "Forward", "Backward"] {
+            #expect(settings["IMUAccelerometer/\(direction)"] == "`Accel \(direction)`")
+        }
+        for direction in ["Pitch Up", "Pitch Down", "Roll Left", "Roll Right", "Yaw Left", "Yaw Right"] {
+            #expect(settings["IMUGyroscope/\(direction)"] == "`Gyro \(direction)`")
+        }
+    }
+
+    @Test func classicProfileUsesOnlyNamesDolphinKnows() {
+        let settings = Self.settings(DolphinSetup.classicControllerProfile(slot: 0, serverName: "MobiPad"))
+
+        #expect(Set(settings.keys).isSubset(of: Self.wiimoteKeys))
+        #expect(Set(settings.values.compactMap(Self.input)).isSubset(of: Self.dsuInputs))
+        #expect(settings.values.compactMap(Self.input).count == 25)
+        #expect(settings["Extension"] == "Classic")
+        // No motion: the Classic Controller layout doesn't tilt.
+        #expect(!settings.keys.contains { $0.hasPrefix("IMU") })
     }
 
     @Test func iniEditsKeepLayoutAndIgnoreKeyCase() {

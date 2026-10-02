@@ -4,9 +4,9 @@ Branch: `tilt-controls` (made from `main` on 2026-10-03). Nothing is pushed or m
 
 ## Progress
 
-- **Done:** research; plan; step 1 (motion in the state and wire format); step 2 (Core Motion → landscape frame); step 3 (DSU packets carry motion in Dolphin's conventions, `DSUMotionTests`, end-to-end test).
-- **Working on:** step 4 (Wii Remote and Classic Controller profiles from Set Up Dolphin).
-- **Next step:** extend `DolphinSetup` to write `Profiles/Wiimote/MobiPad Wii Remote Player N.ini` and `MobiPad Classic Player N.ini`, with tests that check every key and input name against Dolphin's source; update the Mac menu text.
+- **Done:** research; plan; steps 1–3 (motion in the state, Core Motion conversion, DSU output); step 4 (Set Up Dolphin also writes Wii Remote and Classic Controller profiles, tests, Mac menu text).
+- **Working on:** step 5 (controller choice and the Wii Remote layout on the phone).
+- **Next step:** add `ControllerKind` to the app model (saved), a picker on the start screen and the controller screen, Wii Remote controls in `ControllerLayout`, and render them in `ControllerView`.
 - **Half-finished or broken:** nothing.
 
 ## How input gets to Dolphin today
@@ -48,6 +48,7 @@ The phone reports its motion like a normal landscape controller. The Wii Remote 
 - **The protocol version stays at 3.** The motion block is optional. A phone built before this change (classic layout only) still works with the new Mac app. A new phone in Wii Remote mode needs the new Mac app: an older Mac app drops states with motion.
 - **Frame of `Motion`:** x points to the right edge of the screen as the player holds it, y to the top edge, z out of the screen. Acceleration is what an accelerometer measures: +1 g on z when the phone lies face up. Rotation follows the right-hand rule.
 - **Wii Remote buttons map onto existing state buttons:** A → A, B → B, 1 → X, 2 → Y, − → View, + → Menu, Home → Home. Over DSU these are Cross, Circle, Square, Triangle, Share, Options and PS, and the Wii Remote profile maps them back.
+- **Set Up Dolphin writes all three profile kinds at once** (GameCube, Wii Remote, Classic Controller, four players each), so there's still one button. The GameCube profiles are unchanged. Two existing tests listed exactly the four GameCube profile names in the outcome; I updated those expectations to the full list of twelve and kept their checks of the GameCube files. No test was removed or skipped.
 - **Classic Controller profiles match buttons by name**, like the GameCube profiles: A → A, B → B, X → X, Y → Y, LB/RB → L/R, LT/RT → ZL/ZR, View → −, Menu → +.
 
 ## For you to decide

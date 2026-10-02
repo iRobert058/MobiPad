@@ -57,7 +57,7 @@ struct StatusView: View {
                 Text("Adds MobiPad to Dolphin, with a controller profile for each player.")
                     .foregroundStyle(.secondary)
             case .success(.installed):
-                Text("Done. In Dolphin, open Controllers, set Port 1 to Standard Controller, click Configure, and load the profile “MobiPad Player 1”. Port 2 gets “MobiPad Player 2”, and so on.")
+                Text("Done. In Dolphin, open Controllers, set Port 1 to Standard Controller, click Configure, and load the profile “MobiPad Player 1”. Port 2 gets “MobiPad Player 2”, and so on. For Wii games, set Wii Remote 1 to Emulated Wii Remote instead, and load “MobiPad Wii Remote Player 1” (with tilt) or “MobiPad Classic Player 1”.")
                     .foregroundStyle(.secondary)
             case .success(.dolphinIsRunning):
                 Text("Quit Dolphin first, because it overwrites its settings when it quits. Then click Set Up Dolphin again.")

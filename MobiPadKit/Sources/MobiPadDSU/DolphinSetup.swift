@@ -2,9 +2,10 @@ import Foundation
 
 /// Sets Dolphin up for MobiPad, so players don't have to map every button by hand (UX-01).
 ///
-/// Makes sure Dolphin's DSU client knows the MobiPad server, and writes a GameCube controller
-/// profile per player ("MobiPad Player 1" to 4) that players load in Dolphin's controller settings.
-/// It never changes a port's current mapping.
+/// Makes sure Dolphin's DSU client knows the MobiPad server, and writes profiles per player that
+/// players load in Dolphin's controller settings: a GameCube controller ("MobiPad Player 1" to 4), and
+/// for Wii games a Wii Remote with tilt ("MobiPad Wii Remote Player 1" to 4) and a Classic Controller
+/// ("MobiPad Classic Player 1" to 4). It never changes a port's current mapping.
 public enum DolphinSetup {
     public enum Outcome: Equatable, Sendable {
         case installed(profileNames: [String])
@@ -38,14 +39,16 @@ public enum DolphinSetup {
             try newSettings.write(to: clientFile, atomically: true, encoding: .utf8)
         }
 
-        let profileDirectory = configDirectory.appending(path: "Profiles/GCPad", directoryHint: .isDirectory)
-        try FileManager.default.createDirectory(at: profileDirectory, withIntermediateDirectories: true)
         var profileNames: [String] = []
-        for slot in 0..<DSU.slotCount {
-            let name = "MobiPad Player \(slot + 1)"
-            try gameCubeProfile(slot: slot, serverName: serverName)
-                .write(to: profileDirectory.appending(path: "\(name).ini"), atomically: true, encoding: .utf8)
-            profileNames.append(name)
+        for kind in ProfileKind.allCases {
+            let profileDirectory = configDirectory.appending(path: "Profiles/\(kind.folder)", directoryHint: .isDirectory)
+            try FileManager.default.createDirectory(at: profileDirectory, withIntermediateDirectories: true)
+            for slot in 0..<DSU.slotCount {
+                let name = kind.profileName(slot: slot)
+                try kind.profile(slot: slot, serverName: serverName)
+                    .write(to: profileDirectory.appending(path: "\(name).ini"), atomically: true, encoding: .utf8)
+                profileNames.append(name)
+            }
         }
         return .installed(profileNames: profileNames)
     }
@@ -68,6 +71,115 @@ public enum DolphinSetup {
             ini.set("Enabled", to: "True", in: "Server")
         }
         return (ini.text, serverName)
+    }
+
+    enum ProfileKind: CaseIterable {
+        case gameCube, wiiRemote, classicController
+
+        /// Dolphin's profile folder for the emulated controller.
+        var folder: String {
+            switch self {
+            case .gameCube: "GCPad"
+            case .wiiRemote, .classicController: "Wiimote"
+            }
+        }
+
+        func profileName(slot: Int) -> String {
+            switch self {
+            case .gameCube: "MobiPad Player \(slot + 1)"
+            case .wiiRemote: "MobiPad Wii Remote Player \(slot + 1)"
+            case .classicController: "MobiPad Classic Player \(slot + 1)"
+            }
+        }
+
+        func profile(slot: Int, serverName: String) -> String {
+            switch self {
+            case .gameCube: gameCubeProfile(slot: slot, serverName: serverName)
+            case .wiiRemote: wiiRemoteProfile(slot: slot, serverName: serverName)
+            case .classicController: classicControllerProfile(slot: slot, serverName: serverName)
+            }
+        }
+    }
+
+    /// A Wii Remote held sideways, for the phone's Wii Remote layout, with the phone's motion sensors as
+    /// its accelerometer and gyroscope.
+    ///
+    /// The phone sends its motion as a landscape controller, like any other DSU motion controller, so
+    /// the IMU groups map one to one, as in Dolphin's own defaults. "Sideways Wiimote" makes Dolphin
+    /// turn both the motion and the D-pad a quarter turn: the phone's left end becomes the remote's IR
+    /// end, and pressing up on the phone's D-pad presses the remote's right. The phone sends its
+    /// Wii Remote buttons as A → Cross, B → Circle, 1 → Square, 2 → Triangle, − → Share, + → Options and
+    /// Home → PS.
+    static func wiiRemoteProfile(slot: Int, serverName: String) -> String {
+        """
+        [Profile]
+        Device = DSUClient/\(slot)/\(serverName)
+        Buttons/A = `Cross`
+        Buttons/B = `Circle`
+        Buttons/1 = `Square`
+        Buttons/2 = `Triangle`
+        Buttons/- = `Share`
+        Buttons/+ = `Options`
+        Buttons/Home = `PS`
+        D-Pad/Up = `Pad N`
+        D-Pad/Down = `Pad S`
+        D-Pad/Left = `Pad W`
+        D-Pad/Right = `Pad E`
+        IMUAccelerometer/Up = `Accel Up`
+        IMUAccelerometer/Down = `Accel Down`
+        IMUAccelerometer/Left = `Accel Left`
+        IMUAccelerometer/Right = `Accel Right`
+        IMUAccelerometer/Forward = `Accel Forward`
+        IMUAccelerometer/Backward = `Accel Backward`
+        IMUGyroscope/Pitch Up = `Gyro Pitch Up`
+        IMUGyroscope/Pitch Down = `Gyro Pitch Down`
+        IMUGyroscope/Roll Left = `Gyro Roll Left`
+        IMUGyroscope/Roll Right = `Gyro Roll Right`
+        IMUGyroscope/Yaw Left = `Gyro Yaw Left`
+        IMUGyroscope/Yaw Right = `Gyro Yaw Right`
+        Options/Sideways Wiimote = True
+        Extension = None
+
+        """
+    }
+
+    /// A Wii Remote with a Classic Controller attached, for the phone's Classic Controller layout, matched
+    /// by button name like the GameCube profile. LB and RB are the shoulder buttons L and R, LT and RT
+    /// are ZL and ZR, View is − and Menu is +. The sticks get the same full-circle calibration.
+    static func classicControllerProfile(slot: Int, serverName: String) -> String {
+        """
+        [Profile]
+        Device = DSUClient/\(slot)/\(serverName)
+        Extension = Classic
+        Classic/Buttons/A = `Cross`
+        Classic/Buttons/B = `Circle`
+        Classic/Buttons/X = `Square`
+        Classic/Buttons/Y = `Triangle`
+        Classic/Buttons/ZL = `L2`
+        Classic/Buttons/ZR = `R2`
+        Classic/Buttons/- = `Share`
+        Classic/Buttons/+ = `Options`
+        Classic/Buttons/Home = `PS`
+        Classic/Left Stick/Up = `Left Y+`
+        Classic/Left Stick/Down = `Left Y-`
+        Classic/Left Stick/Left = `Left X-`
+        Classic/Left Stick/Right = `Left X+`
+        Classic/Left Stick/Calibration = 100.00
+        Classic/Right Stick/Up = `Right Y+`
+        Classic/Right Stick/Down = `Right Y-`
+        Classic/Right Stick/Left = `Right X-`
+        Classic/Right Stick/Right = `Right X+`
+        Classic/Right Stick/Calibration = 100.00
+        Classic/Triggers/L = `L1`
+        Classic/Triggers/R = `R1`
+        Classic/Triggers/L-Analog = `L1`
+        Classic/Triggers/R-Analog = `R1`
+        Classic/D-Pad/Up = `Pad N`
+        Classic/D-Pad/Down = `Pad S`
+        Classic/D-Pad/Left = `Pad W`
+        Classic/D-Pad/Right = `Pad E`
+
+        """
     }
 
     /// A standard GameCube controller, matched by button name: the phone's A is the GameCube's A.
