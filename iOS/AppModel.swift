@@ -20,6 +20,11 @@ final class AppModel {
         didSet { UserDefaults.standard.set(appearance.rawValue, forKey: Self.appearanceKey) }
     }
 
+    /// Which controller the phone acts as: the Classic Controller layout, or a Wii Remote with tilt.
+    var controllerKind: ControllerKind {
+        didSet { UserDefaults.standard.set(controllerKind.rawValue, forKey: Self.controllerKindKey) }
+    }
+
     /// Where the controls sit on the controller screen (UX-03).
     var layout: ControllerLayout {
         didSet { UserDefaults.standard.set(try? JSONEncoder().encode(layout), forKey: Self.layoutKey) }
@@ -33,11 +38,13 @@ final class AppModel {
     private static let playerNameKey = "playerName"
     private static let layoutKey = "controllerLayout"
     private static let appearanceKey = "appearance"
+    private static let controllerKindKey = "controllerKind"
     private static let identityKey = "identityKey"
 
     init() {
         playerName = UserDefaults.standard.string(forKey: Self.playerNameKey) ?? ""
         appearance = UserDefaults.standard.string(forKey: Self.appearanceKey).flatMap(Appearance.init) ?? .system
+        controllerKind = UserDefaults.standard.string(forKey: Self.controllerKindKey).flatMap(ControllerKind.init) ?? .classic
         layout = UserDefaults.standard.data(forKey: Self.layoutKey)
             .flatMap { try? JSONDecoder().decode(ControllerLayout.self, from: $0) } ?? .standard
     }

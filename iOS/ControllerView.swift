@@ -27,6 +27,11 @@ struct ControllerView: View {
 
     private var layout: ControllerLayout { draft ?? model.layout }
 
+    /// The controls of the controller the phone acts as.
+    private var controls: [Control] {
+        Control.allCases.filter { $0.kind == model.controllerKind }
+    }
+
     var body: some View {
         GeometryReader { proxy in
             let area = proxy.size
@@ -38,7 +43,7 @@ struct ControllerView: View {
                         .onTapGesture { selected = nil }
                         .gesture(pinchGesture(selected))
                 }
-                ForEach(Control.allCases.filter { layout[$0].isShown }) { control in
+                ForEach(controls.filter { layout[$0].isShown }) { control in
                     placed(control, in: area)
                 }
             }
@@ -49,6 +54,11 @@ struct ControllerView: View {
         .padding(16)
         .onChange(of: state) { _, newState in
             if draft == nil { model.send(newState) }
+        }
+        .onChange(of: model.controllerKind) {
+            // The other controller has other buttons, so release everything.
+            selected = nil
+            state = ControllerState()
         }
         // FR-05: a light tap whenever a button goes down.
         .sensoryFeedback(.impact(weight: .light), trigger: state.buttons) { old, new in
@@ -73,6 +83,16 @@ struct ControllerView: View {
             Text(model.statusText)
                 .foregroundStyle(.secondary)
             HStack(spacing: 20) {
+                Menu(model.controllerKind.name) {
+                    Picker("Controller", selection: Binding(
+                        get: { model.controllerKind },
+                        set: { model.controllerKind = $0 }
+                    )) {
+                        ForEach(ControllerKind.allCases) { kind in
+                            Text(kind.name)
+                        }
+                    }
+                }
                 Button("Edit Layout") { startEditing() }
                 Button("Disconnect", role: .destructive) { model.disconnect() }
             }
@@ -84,12 +104,12 @@ struct ControllerView: View {
         VStack(spacing: 6) {
             HStack(spacing: 16) {
                 Menu("Show/Hide") {
-                    ForEach(Control.allCases) { control in
+                    ForEach(controls) { control in
                         Toggle(control.name, isOn: isShown(control))
                     }
                 }
                 Button("Reset") {
-                    withAnimation { draft = .standard }
+                    withAnimation { draft?.reset(model.controllerKind) }
                     selected = nil
                 }
                 Button("Cancel") { stopEditing(saving: false) }
@@ -271,6 +291,22 @@ struct ControllerView: View {
         case .home: button("Home", .home, size: size)
         case .leftStickPress: button("L3", .leftStickPress, size: size)
         case .rightStickPress: button("R3", .rightStickPress, size: size)
+        // The Wii Remote's buttons go out as the state buttons the Wii Remote profile in Dolphin expects.
+        case .wiiDpad:
+            cross(
+                scale: scale,
+                top: button("▲", .dpadUp, size: size),
+                left: button("◀", .dpadLeft, size: size),
+                right: button("▶", .dpadRight, size: size),
+                bottom: button("▼", .dpadDown, size: size)
+            )
+        case .wiiA: button("A", .a, size: size)
+        case .wiiB: button("B", .b, size: size)
+        case .wiiOne: button("1", .x, size: size)
+        case .wiiTwo: button("2", .y, size: size)
+        case .wiiMinus: button("−", .view, size: size)
+        case .wiiHome: button("Home", .home, size: size)
+        case .wiiPlus: button("+", .menu, size: size)
         }
     }
 
@@ -321,10 +357,11 @@ private extension ControllerLayout.Control {
         let size: CGSize = switch self {
         case .leftStick, .rightStick:
             CGSize(width: Metrics.stickRadius * 2, height: Metrics.stickRadius * 2)
-        case .dpad, .faceButtons:
+        case .dpad, .faceButtons, .wiiDpad:
             CGSize(width: Metrics.button * 3, height: Metrics.button * 3 + Metrics.crossSpacing * 2)
         case .leftTrigger, .leftShoulder, .rightShoulder, .rightTrigger,
-             .view, .menu, .home, .leftStickPress, .rightStickPress:
+             .view, .menu, .home, .leftStickPress, .rightStickPress,
+             .wiiA, .wiiB, .wiiOne, .wiiTwo, .wiiMinus, .wiiHome, .wiiPlus:
             CGSize(width: Metrics.button, height: Metrics.button)
         }
         return CGSize(width: size.width * scale, height: size.height * scale)

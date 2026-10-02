@@ -1,5 +1,22 @@
 import CoreGraphics
 
+/// Which controller the phone acts as.
+enum ControllerKind: String, CaseIterable, Identifiable {
+    /// Two sticks, A/B/X/Y, shoulders and triggers. No tilt.
+    case classic
+    /// A Wii Remote held sideways, steered by tilting the phone. For Dolphin.
+    case wiiRemote
+
+    var id: Self { self }
+
+    var name: String {
+        switch self {
+        case .classic: "Classic Controller"
+        case .wiiRemote: "Wii Remote"
+        }
+    }
+}
+
 /// Where each control sits on the controller screen, how big it is, and whether it's shown (UX-03).
 ///
 /// Positions are fractions of the controller area, so a layout made on one iPhone fits any other.
@@ -18,6 +35,13 @@ struct ControllerLayout: Codable, Equatable {
         get { placements[control] ?? control.standardPlacement }
         set { placements[control] = newValue }
     }
+
+    /// Puts one controller's controls back where the standard layout has them.
+    mutating func reset(_ kind: ControllerKind) {
+        for control in Control.allCases where control.kind == kind {
+            placements[control] = control.standardPlacement
+        }
+    }
 }
 
 extension ControllerLayout {
@@ -26,8 +50,20 @@ extension ControllerLayout {
         case leftStick, rightStick, dpad, faceButtons
         case leftTrigger, leftShoulder, rightShoulder, rightTrigger
         case view, menu, home, leftStickPress, rightStickPress
+        // The Wii Remote layout, held sideways like an NES pad.
+        case wiiDpad, wiiA, wiiB, wiiOne, wiiTwo, wiiMinus, wiiHome, wiiPlus
 
         var id: Self { self }
+
+        var kind: ControllerKind {
+            switch self {
+            case .leftStick, .rightStick, .dpad, .faceButtons, .leftTrigger, .leftShoulder, .rightShoulder,
+                 .rightTrigger, .view, .menu, .home, .leftStickPress, .rightStickPress:
+                .classic
+            case .wiiDpad, .wiiA, .wiiB, .wiiOne, .wiiTwo, .wiiMinus, .wiiHome, .wiiPlus:
+                .wiiRemote
+            }
+        }
 
         var name: String {
             switch self {
@@ -44,6 +80,14 @@ extension ControllerLayout {
             case .home: "Home"
             case .leftStickPress: "L3 (left stick click)"
             case .rightStickPress: "R3 (right stick click)"
+            case .wiiDpad: "D-pad"
+            case .wiiA: "A"
+            case .wiiB: "B"
+            case .wiiOne: "1"
+            case .wiiTwo: "2"
+            case .wiiMinus: "−"
+            case .wiiHome: "Home"
+            case .wiiPlus: "+"
             }
         }
 
@@ -63,6 +107,16 @@ extension ControllerLayout {
             case .home: Placement(center: CGPoint(x: 0.5, y: 0.68), isShown: false)
             case .leftStickPress: Placement(center: CGPoint(x: 0.24, y: 0.36), isShown: false)
             case .rightStickPress: Placement(center: CGPoint(x: 0.76, y: 0.8), isShown: false)
+            // Wii Remote: D-pad and A under the left thumb, 1 and 2 under the right, B where the left
+            // index finger would find the trigger, and −, Home, + in the middle as on the remote.
+            case .wiiDpad: Placement(center: CGPoint(x: 0.14, y: 0.56))
+            case .wiiB: Placement(center: CGPoint(x: 0.12, y: 0.14), scale: 1.3)
+            case .wiiA: Placement(center: CGPoint(x: 0.32, y: 0.56), scale: 1.2)
+            case .wiiMinus: Placement(center: CGPoint(x: 0.42, y: 0.5))
+            case .wiiHome: Placement(center: CGPoint(x: 0.5, y: 0.5))
+            case .wiiPlus: Placement(center: CGPoint(x: 0.58, y: 0.5))
+            case .wiiOne: Placement(center: CGPoint(x: 0.74, y: 0.56), scale: 1.5)
+            case .wiiTwo: Placement(center: CGPoint(x: 0.9, y: 0.56), scale: 1.5)
             }
         }
     }

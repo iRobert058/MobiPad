@@ -4,9 +4,9 @@ Branch: `tilt-controls` (made from `main` on 2026-10-03). Nothing is pushed or m
 
 ## Progress
 
-- **Done:** research; plan; steps 1–3 (motion in the state, Core Motion conversion, DSU output); step 4 (Set Up Dolphin also writes Wii Remote and Classic Controller profiles, tests, Mac menu text).
-- **Working on:** step 5 (controller choice and the Wii Remote layout on the phone).
-- **Next step:** add `ControllerKind` to the app model (saved), a picker on the start screen and the controller screen, Wii Remote controls in `ControllerLayout`, and render them in `ControllerView`.
+- **Done:** research; plan; steps 1–4 (motion in the state, Core Motion conversion, DSU output, Dolphin profiles); step 5 (controller choice on the start screen and the controller screen; Wii Remote layout in `ControllerLayout`/`ControllerView`; the layout editor works per controller).
+- **Working on:** step 6 (tilt: Core Motion in Wii Remote mode, sent with the buttons).
+- **Next step:** add `iOS/TiltSensor.swift` (Core Motion at 60 Hz, landscape direction from the window scene), merge its motion into what `AppModel` sends, start it only in Wii Remote mode outside the layout editor, and show a steering indicator.
 - **Half-finished or broken:** nothing.
 
 ## How input gets to Dolphin today
@@ -50,6 +50,10 @@ The phone reports its motion like a normal landscape controller. The Wii Remote 
 - **Wii Remote buttons map onto existing state buttons:** A → A, B → B, 1 → X, 2 → Y, − → View, + → Menu, Home → Home. Over DSU these are Cross, Circle, Square, Triangle, Share, Options and PS, and the Wii Remote profile maps them back.
 - **Set Up Dolphin writes all three profile kinds at once** (GameCube, Wii Remote, Classic Controller, four players each), so there's still one button. The GameCube profiles are unchanged. Two existing tests listed exactly the four GameCube profile names in the outcome; I updated those expectations to the full list of twelve and kept their checks of the GameCube files. No test was removed or skipped.
 - **Classic Controller profiles match buttons by name**, like the GameCube profiles: A → A, B → B, X → X, Y → Y, LB/RB → L/R, LT/RT → ZL/ZR, View → −, Menu → +.
+
+- **Wii Remote layout:** D-pad and A on the left, 1 and 2 (larger) on the right, B top left (where the trigger is when held sideways), and −, Home, + in the middle. The Wii Remote controls are separate controls in the same saved layout, so each controller keeps its own positions, and the editor's Show/Hide and Reset only touch the current controller. Switching controllers releases every button.
+- **The controller can be chosen on the start screen and switched on the controller screen** (a menu next to Edit Layout), so there's no need to disconnect to switch.
+- **I didn't look at the new layout in the Simulator,** because the Simulator keeps its data outside the project folder. I checked the geometry by calculation instead: no controls overlap on the smallest or a large iPhone.
 
 ## For you to decide
 

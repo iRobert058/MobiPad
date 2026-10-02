@@ -22,6 +22,16 @@ struct MacPickerView: View {
                     Text("Shown on the Mac, so you can tell the players apart.")
                 }
 
+                Section {
+                    Picker("Controller", selection: $model.controllerKind) {
+                        ForEach(ControllerKind.allCases) { kind in
+                            Text(kind.name)
+                        }
+                    }
+                } footer: {
+                    Text("Wii Remote steers by tilting the phone, for Wii games in Dolphin.")
+                }
+
                 Section("Macs on this network") {
                     if model.macs.isEmpty {
                         ContentUnavailableView(
