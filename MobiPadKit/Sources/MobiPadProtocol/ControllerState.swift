@@ -1,3 +1,5 @@
+import Foundation
+
 /// A snapshot of every control on the virtual controller.
 ///
 /// The phone sends complete snapshots rather than individual events, so a lost
@@ -92,6 +94,13 @@ extension ControllerState {
         public init(acceleration: Vector, rotationRate: Vector) {
             self.acceleration = acceleration
             self.rotationRate = rotationRate
+        }
+
+        /// How far the controller is turned like a steering wheel, in radians, clockwise as the player
+        /// sees it. Nil while it lies nearly flat, where the angle would only be noise.
+        public var steeringAngle: Double? {
+            guard hypot(acceleration.x, acceleration.y) > 0.35 else { return nil }
+            return Double(atan2(-acceleration.x, acceleration.y))
         }
 
         public struct Vector: Equatable, Sendable {

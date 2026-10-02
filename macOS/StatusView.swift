@@ -138,6 +138,13 @@ private struct PlayerRow: View {
             }
             Spacer()
             if let player {
+                // Wii Remote mode: the wheel turns as the player tilts their phone.
+                if let motion = player.state.motion {
+                    Image(systemName: "steeringwheel")
+                        .rotationEffect(.radians(motion.steeringAngle ?? 0))
+                        .foregroundStyle(.secondary)
+                        .help("Tilt")
+                }
                 StickDot(stick: player.state.leftStick)
                 Text(pressedButtons(player.state))
                     .font(.caption.monospaced())

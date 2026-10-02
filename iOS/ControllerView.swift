@@ -491,17 +491,8 @@ private struct TiltIndicator: View {
             Text("No tilt on this device")
         } else {
             Image(systemName: "steeringwheel")
-                .rotationEffect(.radians(steeringAngle))
+                .rotationEffect(.radians(tilt.motion?.steeringAngle ?? 0))
                 .accessibilityLabel("Tilt")
         }
-    }
-
-    /// How far the phone is turned like a steering wheel, clockwise positive. Zero while it lies
-    /// nearly flat, where the angle would only be noise.
-    private var steeringAngle: Double {
-        guard let acceleration = tilt.motion?.acceleration,
-              hypot(acceleration.x, acceleration.y) > 0.35
-        else { return 0 }
-        return Double(atan2(-acceleration.x, acceleration.y))
     }
 }

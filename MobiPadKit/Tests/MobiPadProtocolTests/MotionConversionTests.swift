@@ -47,6 +47,13 @@ struct MotionConversionTests {
         Self.expectClose(motion.acceleration, .init(x: 0, y: 0, z: 1.5))
     }
 
+    @Test func steeringAngleIsClockwiseAndNilWhenFlat() throws {
+        let angle = Float.pi / 6
+        let turned = Motion(acceleration: .init(x: -sin(angle), y: cos(angle), z: 0), rotationRate: .zero)
+        #expect(abs(try #require(turned.steeringAngle) - Double.pi / 6) < 0.0001)
+        #expect(Motion(acceleration: .init(x: 0, y: 0, z: 1), rotationRate: .zero).steeringAngle == nil)
+    }
+
     @Test func rotationIsInDegreesPerSecondInLandscapeAxes() {
         let oneRadian = Float(180 / Double.pi)
         // Spinning in the plane of the screen is the same in portrait and landscape.

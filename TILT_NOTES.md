@@ -4,9 +4,9 @@ Branch: `tilt-controls` (made from `main` on 2026-10-03). Nothing is pushed or m
 
 ## Progress
 
-- **Done:** research; plan; steps 1–5 (motion in the state, conversion, DSU output, Dolphin profiles, controller choice and Wii Remote layout); step 6 (`iOS/TiltSensor.swift`: Core Motion at 60 Hz in Wii Remote mode, sent with the buttons, steering indicator).
-- **Working on:** step 7 (show each player's tilt in the Mac menu).
-- **Next step:** in `macOS/StatusView.swift`, show a small steering indicator in a player's row when their state has motion.
+- **Done:** research; plan; steps 1–6 (motion in the state, conversion, DSU output, Dolphin profiles, controller choice and Wii Remote layout, tilt sensor); step 7 (the Mac menu shows a turning steering wheel for players who tilt; the steering angle is shared and tested in MobiPadProtocol).
+- **Working on:** step 8 (README and the final notes).
+- **Next step:** document the Wii Remote mode and Dolphin setup in README.md, then write the final summary sections of these notes.
 - **Half-finished or broken:** nothing.
 
 ## How input gets to Dolphin today
