@@ -192,6 +192,31 @@ struct ControllerNetworkTests {
         #expect(rig.host.players().map(\.name) == ["Phone"])
         #expect(phone.statuses.snapshot.last == .connected(slot: 0))
     }
+
+    /// The Mac's own sealed messages, sent back to it, mustn't count as proof of owning the key.
+    @Test func impostorCantReflectTheMacsMessages() async throws {
+        let rig = try await Rig()
+        let phone = rig.phone()
+        try await phone.waitForStatus(.connected(slot: 0))
+
+        let socket = RawSocket(port: rig.port)
+        let welcome = try await socket.welcome(
+            .hello(identity: phone.identity.publicKey.rawRepresentation, ephemeral: SecureChannel.PrivateKey().publicKey.rawRepresentation, name: "Impostor")
+        )
+        socket.send(.sealed(welcome.sealed))
+
+        // A player gets pinged every 50 ms; the impostor must not become one.
+        var receivedSealed = false
+        while let message = try? await socket.receive(timeout: .milliseconds(400)) {
+            if case .sealed = message { receivedSealed = true }
+        }
+        #expect(!receivedSealed)
+        // The real phone was never pushed out.
+        let statuses = phone.statuses.snapshot
+        let joined = statuses.firstIndex(of: .connected(slot: 0)) ?? statuses.startIndex
+        #expect(!statuses[joined...].contains(.connecting))
+        #expect(statuses.last == .connected(slot: 0))
+    }
 }
 
 // MARK: - Helpers
@@ -280,7 +305,7 @@ private final class RawSocket: Sendable {
         connection.send(content: message.encoded(), completion: .idempotent)
     }
 
-    func receive() async throws -> Message {
+    func receive(timeout: Duration = .seconds(2)) async throws -> Message {
         let data: Data = try await withCheckedThrowingContinuation { continuation in
             let resumeOnce = ResumeOnce(continuation)
             connection.receiveMessage { data, _, _, error in
@@ -290,17 +315,22 @@ private final class RawSocket: Sendable {
                     resumeOnce.resume(throwing: error ?? TimedOut())
                 }
             }
-            DispatchQueue.global().asyncAfter(deadline: .now() + 2) { resumeOnce.resume(throwing: TimedOut()) }
+            DispatchQueue.global().asyncAfter(deadline: .now() + timeout.timeInterval) { resumeOnce.resume(throwing: TimedOut()) }
         }
         return try Message(decoding: data)
     }
 
     /// Says hello until the host welcomes us, like a real phone, and returns the Mac's ephemeral key.
     func handshake(_ hello: Message) async throws -> Data {
+        try await welcome(hello).ephemeral
+    }
+
+    /// Says hello until the host welcomes us, and returns the welcome.
+    func welcome(_ hello: Message) async throws -> (ephemeral: Data, sealed: Data) {
         for _ in 0..<20 {
             send(hello)
-            if case .welcome(let macEphemeral, _) = try await receive() {
-                return macEphemeral
+            if case .welcome(let macEphemeral, let sealed) = try await receive() {
+                return (macEphemeral, sealed)
             }
             try await Task.sleep(for: .milliseconds(20))
         }

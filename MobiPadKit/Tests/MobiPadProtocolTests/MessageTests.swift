@@ -42,7 +42,7 @@ struct MessageTests {
 
     @Test func helloUsesDocumentedLayout() {
         let bytes = [UInt8](Message.hello(identity: Self.key, ephemeral: Self.key, name: "Ana").encoded())
-        #expect(bytes[0..<4] == [0x4D, 0x50, 2, 1])
+        #expect(bytes[0..<4] == [0x4D, 0x50, 3, 1])
         #expect(bytes.count == 4 + 64 + 3)
         #expect(Array(bytes[68...]) == Array("Ana".utf8))
     }
@@ -69,8 +69,8 @@ struct MessageTests {
         #expect(throws: Message.ParseError.wrongLength) { try Message(decoding: hello.dropLast()) }
         #expect(throws: Message.ParseError.tooShort) { try Message(decoding: Data([0x4D])) }
         #expect(throws: Message.ParseError.badMagic) { try Message(decoding: Data([0, 0, 2, 2])) }
-        #expect(throws: Message.ParseError.unsupportedVersion(1)) { try Message(decoding: Data([0x4D, 0x50, 1, 2])) }
-        #expect(throws: Message.ParseError.unknownMessageType(99)) { try Message(decoding: Data([0x4D, 0x50, 2, 99])) }
+        #expect(throws: Message.ParseError.unsupportedVersion(2)) { try Message(decoding: Data([0x4D, 0x50, 2, 2])) }
+        #expect(throws: Message.ParseError.unknownMessageType(99)) { try Message(decoding: Data([0x4D, 0x50, 3, 99])) }
         #expect(throws: Message.ParseError.wrongLength) { try SessionMessage(decoding: Data([1, 0, 0])) }
     }
 

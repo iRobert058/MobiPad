@@ -19,6 +19,8 @@ MobiPadKit/            Swift package with all the logic, testable without Xcode
   MobiPadKeyboard      Player 1 as key presses, for Ryujinx
 iOS/                   iPhone app: name, find a Mac, then the controller
 macOS/                 Mac menu bar app: approvals, player slots, latency, live input
+Shared/AppIcon.icon    app icon for both apps, with light, dark and clear/tinted versions; open it in Icon Composer (comes with Xcode) to edit
+Shared/mobipad-app-icon/  the icon's source layers per mode, alternatives and previews
 docs/research/         technical research and decisions
 project.yml            XcodeGen spec that generates MobiPad.xcodeproj
 ```
@@ -50,10 +52,21 @@ Turn on **Test controller** in the Mac menu. It joins as a player that circles i
 
 ### Dolphin (Mario Kart Wii)
 
-1. Controllers → **Alternate Input Sources** → enable **DSU Client** and add a server: IP `127.0.0.1`, port `26760`.
-2. Configure the emulated controller (a GameCube controller or a Classic Controller works well for Mario Kart Wii). Pick the DSU device, then map each input by clicking it and pressing the matching button on the phone.
-   Dolphin uses PlayStation names: **Cross = A, Circle = B, Square = X, Triangle = Y, L1/R1 = LB/RB, L2/R2 = LT/RT**.
-3. For more players, repeat step 2 for port 2, 3 or 4 and pick DSU device 1, 2 or 3.
+1. In the Mac menu, click **Set Up Dolphin**. It adds MobiPad to Dolphin as a DSU server, if it isn't there yet, and adds a GameCube controller profile for each player. It doesn't change your current controller settings. If the server has to be added while Dolphin is open, it asks you to quit Dolphin first, because Dolphin overwrites its settings when it quits.
+2. In Dolphin, open **Controllers**, set Port 1 to **Standard Controller**, click **Configure**, pick **MobiPad Player 1** under Profile, and click **Load**. For more players, load MobiPad Player 2 on Port 2, and so on.
+
+The profiles match buttons by name:
+
+| Phone | GameCube | | Phone | GameCube |
+|---|---|---|---|---|
+| A, B, X, Y | A, B, X, Y | | Left stick | Control Stick |
+| RB | Z | | Right stick | C-Stick |
+| LT / RT | L / R | | D-pad | D-pad |
+| Menu | Start | | | |
+
+LB, View, Home, L3 and R3 aren't used. To change a button, remap it in Dolphin and save the profile under another name, because Set Up Dolphin overwrites the MobiPad profiles.
+
+**By hand**, for example for a Classic Controller: in Controllers → **Alternate Input Sources**, enable **DSU Client** and add a server: IP `127.0.0.1`, port `26760`. Configure the emulated controller, pick the DSU device, then map each input by clicking it and pressing the matching button on the phone. Dolphin uses PlayStation names: **Cross = A, Circle = B, Square = X, Triangle = Y, L1/R1 = LB/RB, L2/R2 = LT/RT**. DSU device 0 is Player 1, device 1 is Player 2, and so on.
 
 ### Cemu
 
@@ -83,7 +96,10 @@ Only turn the keyboard toggle on while playing: Player 1's buttons type into whi
 
 A phone has to be allowed on the Mac once (CR-03). After that, all input is encrypted and authenticated (NFR-06). Every phone has its own key, and the Mac only accepts input from the phone holding that key, so a device that copies a phone's details still can't send input or take its slot. **Forget** in the menu removes every approved phone.
 
-Not covered: the phone doesn't check that it's talking to the real Mac. A fake Mac on your network could see your button presses, but it can't control anything.
+Not covered:
+- The phone doesn't check that it's talking to the real Mac. A fake Mac on your network could see your button presses, but it can't control anything.
+- The approval prompt shows whatever name the phone sends, and any device on your network can ask. Only click Allow when you're expecting a phone.
+- The phone keeps its key in the app's settings, which are included in backups of the phone. Someone with a backup could act as that phone.
 
 ## Debugging
 
@@ -127,6 +143,7 @@ Done, and tested in the package:
 - **DSU for Dolphin and Cemu.**
 - **Keyboard key mapping for Ryujinx.**
 - **Test controller in the Mac menu.**
+- **Set Up Dolphin (UX-01):** the DSU server entry and the GameCube profiles. Not yet loaded in Dolphin itself.
 
 Checked on this Mac without Xcode:
 - `project.yml` generates a valid Xcode project (app IDs, OS versions, package links).
@@ -136,6 +153,7 @@ Written, but not yet run on a device or in an emulator (the apps haven't been bu
 - iPhone layout (FR-03, UX-02), with LB/RB/LT/RT added for Mario Kart
 - multi-touch (FR-04) and haptics (FR-05)
 - layout editing (UX-03): checked in the Simulator that it draws correctly, but moving and resizing by touch haven't been tried
+- dark mode (UX-05): follows the phone, or Light or Dark from the button at the top of the start screen. Checked in the Simulator, including switching back to following the phone
 - the Mac's menu: approval prompt, test screen (FR-08), test controller switch and keyboard output
 
 Not planned for now: tilt steering.

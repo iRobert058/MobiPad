@@ -23,6 +23,7 @@ struct StatusView: View {
 
             Divider()
             serviceStatus
+            dolphinSettings
             Divider()
             testPlayerSettings
             Divider()
@@ -46,6 +47,30 @@ struct StatusView: View {
         case 1: "1 approved phone"
         case let count: "\(count) approved phones"
         }
+    }
+
+    @ViewBuilder private var dolphinSettings: some View {
+        Button("Set Up Dolphin") { model.setUpDolphin() }
+        Group {
+            switch model.dolphinSetup {
+            case nil:
+                Text("Adds MobiPad to Dolphin, with a controller profile for each player.")
+                    .foregroundStyle(.secondary)
+            case .success(.installed):
+                Text("Done. In Dolphin, open Controllers, set Port 1 to Standard Controller, click Configure, and load the profile “MobiPad Player 1”. Port 2 gets “MobiPad Player 2”, and so on.")
+                    .foregroundStyle(.secondary)
+            case .success(.dolphinIsRunning):
+                Text("Quit Dolphin first, because it overwrites its settings when it quits. Then click Set Up Dolphin again.")
+                    .foregroundStyle(.orange)
+            case .success(.dolphinNotFound):
+                Text("Dolphin’s settings weren’t found. Open Dolphin once, quit it, and try again.")
+                    .foregroundStyle(.orange)
+            case .failure(let error):
+                Text("Couldn’t set up Dolphin: \(error.localizedDescription)")
+                    .foregroundStyle(.red)
+            }
+        }
+        .font(.caption)
     }
 
     @ViewBuilder private var testPlayerSettings: some View {
@@ -85,7 +110,7 @@ struct StatusView: View {
         case .starting:
             Label("Starting…", systemImage: "hourglass")
         case .running:
-            Label("In Dolphin or Cemu, add a DSU server at 127.0.0.1, port \(String(DSU.defaultPort)).", systemImage: "info.circle")
+            Label("In Cemu, add a DSU server at 127.0.0.1, port \(String(DSU.defaultPort)).", systemImage: "info.circle")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         case .failed(let message):

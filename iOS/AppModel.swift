@@ -15,6 +15,11 @@ final class AppModel {
         didSet { UserDefaults.standard.set(playerName, forKey: Self.playerNameKey) }
     }
 
+    /// Light or dark, or following the phone (UX-05).
+    var appearance: Appearance {
+        didSet { UserDefaults.standard.set(appearance.rawValue, forKey: Self.appearanceKey) }
+    }
+
     /// Where the controls sit on the controller screen (UX-03).
     var layout: ControllerLayout {
         didSet { UserDefaults.standard.set(try? JSONEncoder().encode(layout), forKey: Self.layoutKey) }
@@ -27,10 +32,12 @@ final class AppModel {
 
     private static let playerNameKey = "playerName"
     private static let layoutKey = "controllerLayout"
+    private static let appearanceKey = "appearance"
     private static let identityKey = "identityKey"
 
     init() {
         playerName = UserDefaults.standard.string(forKey: Self.playerNameKey) ?? ""
+        appearance = UserDefaults.standard.string(forKey: Self.appearanceKey).flatMap(Appearance.init) ?? .system
         layout = UserDefaults.standard.data(forKey: Self.layoutKey)
             .flatMap { try? JSONDecoder().decode(ControllerLayout.self, from: $0) } ?? .standard
     }
@@ -103,4 +110,18 @@ final class AppModel {
         UserDefaults.standard.set(key.rawRepresentation, forKey: identityKey)
         return key
     }()
+}
+
+enum Appearance: String, CaseIterable, Identifiable {
+    case system, light, dark
+
+    var id: Self { self }
+
+    var name: String {
+        switch self {
+        case .system: "Same as iPhone"
+        case .light: "Light"
+        case .dark: "Dark"
+        }
+    }
 }

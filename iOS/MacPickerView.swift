@@ -40,6 +40,17 @@ struct MacPickerView: View {
                 }
             }
             .navigationTitle("MobiPad")
+            .toolbar {
+                Menu {
+                    Picker("Appearance", selection: $model.appearance) {
+                        ForEach(Appearance.allCases) { appearance in
+                            Text(appearance.name)
+                        }
+                    }
+                } label: {
+                    Label("Appearance", systemImage: "circle.lefthalf.filled")
+                }
+            }
         }
         .onAppear { model.startBrowsing() }
     }

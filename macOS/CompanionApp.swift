@@ -37,6 +37,8 @@ final class CompanionModel {
     /// The slot of the pretend player, while it runs.
     private(set) var testPlayerSlot: Int?
     private(set) var testPlayerFailed = false
+    /// The result of the last click on Set Up Dolphin.
+    private(set) var dolphinSetup: Result<DolphinSetup.Outcome, any Error>?
     /// Identity key (base64) → the name the phone had when it was approved.
     private(set) var approvedPhones: [String: String]
     private var approvalQueue: [ControllerHost.ApprovalRequest] = []
@@ -87,6 +89,14 @@ final class CompanionModel {
             host.stopTestPlayer()
             testPlayerSlot = nil
             testPlayerFailed = false
+        }
+    }
+
+    func setUpDolphin() {
+        dolphinSetup = Result {
+            try DolphinSetup.install {
+                !NSRunningApplication.runningApplications(withBundleIdentifier: "org.dolphin-emu.dolphin").isEmpty
+            }
         }
     }
 
