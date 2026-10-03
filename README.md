@@ -9,6 +9,18 @@ iPhone ──Wi-Fi (encrypted UDP, Bonjour)──▶ Mac companion app ──▶
 
 MobiPad doesn't create a system-wide virtual gamepad, because that needs a paid Apple entitlement. Emulators read it as a DSU controller, or as a keyboard. [docs/research/virtual-hid-macos.md](docs/research/virtual-hid-macos.md) explains why.
 
+## Screenshots
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/classic-controller.png" alt="Classic Controller layout in landscape: two sticks, a D-pad, A, B, X and Y, shoulder buttons and triggers" width="400"><br>Classic Controller</td>
+    <td align="center" rowspan="2"><img src="docs/screenshots/wii-remote-pointing.png" alt="Wii Remote (pointing) layout, upright: D-pad, a big A, B and Center, then minus, Home and plus, then 1 and 2" width="180"><br>Wii Remote (pointing)</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/wii-remote-sideways.png" alt="Wii Remote (sideways) layout in landscape: D-pad and A on the left, minus, Home and plus in the middle, big 1 and 2 on the right, B top left and Center below" width="400"><br>Wii Remote (sideways)</td>
+  </tr>
+</table>
+
 ## Layout
 
 ```
@@ -156,7 +168,7 @@ Tried on real hardware:
 - Both apps build and run from Xcode; the Mac app lives in the menu bar.
 - An iPhone 16 Pro (and the iPhone Simulator) finds the Mac, gets approved, connects and plays.
 - Dolphin reads both sticks and all buttons over DSU, as a GameCube controller.
-- Set Up Dolphin's Wii Remote profile loads in Dolphin, and the pointer follows the phone left and right.
+- Set Up Dolphin's Wii Remote profile loads in Dolphin. In the Wii Menu the pointer follows the phone in every direction, held upright, and A selects.
 - Layout editing and dark mode draw correctly in the Simulator.
 
 Covered by the package tests (`swift test`):
@@ -172,7 +184,7 @@ Covered by the package tests (`swift test`):
 
 Not tried yet: Cemu, Ryujinx with keyboard output, four players at once, haptics, moving and resizing controls by touch, latency figures on a real network, and steering in Mario Kart Wii.
 
-Work in progress: the pointer's up and down still needs fixing; see [TILT_NOTES.md](TILT_NOTES.md).
+How the motion controls were built and tested, with the measurements behind the choices: [TILT_NOTES.md](TILT_NOTES.md).
 
 ## License
 

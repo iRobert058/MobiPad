@@ -5,8 +5,8 @@ Branch: `tilt-controls`, made from `main` on 2026-10-03. Nothing is pushed or me
 ## Progress
 
 - **Done:** the original eight steps; the pointer work; after the live tests: Dolphin's gyroscope calibration off, Point's Accelerometer Influence off, buttons that always count a completed tap, the pointing Wii Remote held upright like a real remote, and taps held for at least 120 ms.
-- **Working on:** nothing. Waiting for the next live test.
-- **Next step:** check the upright pointing remote and quick A taps in the Wii Menu (see "Third live test" below). If both are good, check Mario Kart steering and merge into `main`.
+- **Working on:** nothing. Merged into `main` on 2026-10-03, after the upright pointing remote and quick A taps worked in the Wii Menu.
+- **Next step:** check Mario Kart steering (step 5 of the manual test).
 - **Half-finished or broken:** nothing known.
 
 ## Third live test (2026-10-03)
