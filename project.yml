@@ -40,7 +40,8 @@ targets:
         CFBundleDisplayName: MobiPad
         UILaunchScreen: {}
         UIRequiresFullScreen: true
-        # Landscape, except the pointing Wii Remote, which turns the screen upright (AppDelegate).
+        # The start screen turns with the phone; the controller is landscape, except the pointing
+        # Wii Remote, which is upright (AppDelegate).
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight

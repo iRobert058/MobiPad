@@ -6,8 +6,12 @@ struct MobiPadApp: App {
     @UIApplicationDelegateAdaptor private var appDelegate: AppDelegate
     @State private var model = AppModel()
 
-    /// The pointing Wii Remote is held upright, like a real one aimed at the TV.
-    private var isUpright: Bool { model.connectedMac != nil && model.controllerKind.isUpright }
+    /// The start screen turns with the phone. The controller is landscape, except the pointing Wii
+    /// Remote, which is held upright like a real one aimed at the TV.
+    private var orientations: UIInterfaceOrientationMask {
+        guard model.connectedMac != nil else { return .allButUpsideDown }
+        return model.controllerKind.isUpright ? .portrait : .landscape
+    }
 
     var body: some Scene {
         WindowGroup {
@@ -19,17 +23,17 @@ struct MobiPadApp: App {
                 }
             }
             .preferredColorScheme(model.appearance.colorScheme)
-            .onChange(of: isUpright, initial: true) { _, isUpright in
-                AppDelegate.turnScreen(to: isUpright ? .portrait : .landscape)
+            .onChange(of: orientations, initial: true) { _, orientations in
+                AppDelegate.turnScreen(to: orientations)
             }
         }
     }
 }
 
-/// Turns the screen upright for the pointing Wii Remote, whichever way the phone is held.
+/// Turns the screen to the orientations each screen allows, whichever way the phone is held.
 final class AppDelegate: NSObject, UIApplicationDelegate {
-    /// Landscape until the controller screen asks for upright.
-    @MainActor private static var orientations: UIInterfaceOrientationMask = .landscape
+    /// The app opens on the start screen, which turns with the phone.
+    @MainActor private static var orientations: UIInterfaceOrientationMask = .allButUpsideDown
 
     func application(
         _ application: UIApplication, supportedInterfaceOrientationsFor window: UIWindow?
