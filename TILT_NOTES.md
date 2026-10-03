@@ -4,16 +4,16 @@ Branch: `tilt-controls`, made from `main` on 2026-10-03. Nothing is pushed or me
 
 ## Progress
 
-- **Done:** all eight steps of the plan. The package tests pass (69 tests), and both apps build, including the iPhone app for a real device.
+- **Done:** the original eight steps, then (2026-10-03, after your question about pointing) the pointer work: the sideways turn moved from Dolphin to the phone, a Center button for Dolphin's pointer, and a Wii Remote (pointing) layout for games like Wii Party. The package tests pass (71 tests), both apps build, and I checked both Wii Remote layouts in the Simulator.
 - **Working on:** nothing.
 - **Next step:** your manual test on a real iPhone with Dolphin (checklist below).
-- **Half-finished or broken:** nothing known. Tilt has not run on a real device or in Dolphin yet.
+- **Half-finished or broken:** nothing known. Motion has not run on a real device or in Dolphin yet.
 
 ## What you get
 
-- On the phone, choose **Classic Controller** (today's layout, no tilt) or **Wii Remote** (a sideways Wii Remote: D-pad, A, B, 1, 2, −, Home, +). Choose on the start screen, or with the new menu next to Edit Layout on the controller screen.
-- In Wii Remote mode the phone reads its accelerometer and gyroscope 60 times a second and sends them with the buttons. A steering wheel next to the player name turns as you tilt; the Mac menu shows the same wheel per player.
-- **Set Up Dolphin** in the Mac menu now also writes, per player, **MobiPad Wii Remote Player N** (buttons, D-pad, accelerometer, gyroscope, Sideways Wii Remote on) and **MobiPad Classic Player N** (a Wii Remote with the Classic Controller extension). The GameCube profiles are unchanged.
+- On the phone, choose **Classic Controller** (today's layout, no motion), **Wii Remote (sideways)** (steering, Mario Kart) or **Wii Remote (pointing)** (pointer games like Wii Party). Choose on the start screen, or with the menu next to Edit Layout on the controller screen, also mid-game.
+- In both Wii Remote modes the phone reads its accelerometer and gyroscope 100 times a second and sends them with the buttons. Sideways, a steering wheel next to the player name turns as you tilt. Both Wii Remote layouts have a **Center** button that recenters Dolphin's pointer. The Mac menu shows a moving tilt dot per player.
+- **Set Up Dolphin** in the Mac menu now also writes, per player, **MobiPad Wii Remote Player N** (buttons, D-pad, accelerometer, gyroscope, Center → pointer recenter; one profile for both holds) and **MobiPad Classic Player N** (a Wii Remote with the Classic Controller extension). The GameCube profiles are unchanged.
 - Everything else works as before. In Classic Controller mode the phone sends exactly what it sent before, and the DSU motion fields stay zero, so Cemu, Ryujinx (keyboard) and the GameCube profiles are unaffected.
 
 ## Commits
@@ -27,7 +27,11 @@ Branch: `tilt-controls`, made from `main` on 2026-10-03. Nothing is pushed or me
 7. `3057ce3`: the controller choice and the Wii Remote layout on the phone.
 8. `9910107`: reading tilt in Wii Remote mode.
 9. `32aa156`: tilt in the Mac menu.
-10. The last commit: README, these final notes, and two small fixes in the iPhone code: one shared motion manager, and the last sent buttons cleared on connect and disconnect.
+10. `a650ed8`: README, these notes, and two small fixes in the iPhone code: one shared motion manager, and the last sent buttons cleared on connect and disconnect.
+11. `8440170`: the phone turns its motion and D-pad sideways itself instead of Dolphin, so one profile serves every hold.
+12. `5a83ffb`: the Center button recenters Dolphin's pointer.
+13. `f1f3aca`: the Wii Remote (pointing) layout, and motion at 100 Hz.
+14. The last commit: README and these notes for the pointer work.
 
 ## Files changed
 
@@ -55,32 +59,42 @@ Docs: `README.md` and this file.
 1. Run both apps from Xcode (MobiPadCompanion, then MobiPad on the phone). Both need this version: an older Mac app ignores a phone while it tilts.
 2. Click **Set Up Dolphin**. In Dolphin's profiles folder there should now be four Wii Remote and four Classic profiles next to the GameCube ones.
 3. In Dolphin: Controllers → **Wii Remote 1: Emulated Wii Remote** → Configure → load **MobiPad Wii Remote Player 1**. Check that:
-   - Options shows **Sideways Wii Remote** ticked.
-   - The **Motion Input** tab shows Accelerometer and Gyroscope mapped to `Accel …` and `Gyro …`, and its preview moves when you tilt the phone.
-4. On the phone choose **Wii Remote**. The steering wheel by your name should turn as you tilt, and the Mac menu's wheel for your player too.
+   - Options shows **Sideways Wii Remote** *not* ticked (the phone turns its motion itself).
+   - The **Motion Input** tab shows Accelerometer and Gyroscope mapped to `Accel …` and `Gyro …`, Point's Recenter mapped to `R3`, and its previews move when you tilt the phone.
+4. On the phone choose **Wii Remote (sideways)**. The steering wheel by your name should turn as you tilt, and the tilt dot in the Mac menu should move.
 5. In Mario Kart Wii, play with the **Wii Wheel / sideways Wii Remote** controls, holding the phone like a steering wheel with the screen toward you:
    - Turning the phone clockwise should steer **right**. If it steers left, tell me: that would mean a sign is flipped, which is a one-line fix in `DSU.motionFields`.
    - Do the same with the phone turned the other way round (camera on the other side). Steering should still be correct.
    - Buttons: 2 accelerates, 1 brakes, B drifts, the D-pad uses items, + pauses.
    - Shake the phone for tricks and wheelies.
    - Menus: try navigating with the D-pad. Dolphin may also move the pointer with the phone's motion ("Point" under Motion Input); note whether that gets in the way.
-6. With the phone on **Classic Controller**, load **MobiPad Classic Player 1** in Dolphin and try a Wii game that supports the Classic Controller (Mario Kart Wii does).
-7. Check that nothing else changed: the GameCube profile in Dolphin, Cemu, and Ryujinx with "Player 1 as keyboard", all with the phone on Classic Controller.
-8. On the phone: Edit Layout in Wii Remote mode (tilt should pause while editing), switching controllers while connected, and battery and heat after a long session with tilt.
-9. With your friend: a phone with yesterday's build should still work with the new Mac app on the Classic Controller layout.
+6. **Pointing (Wii Party):** switch the phone to **Wii Remote (pointing)** and hold it flat, screen up, top edge toward the TV. In the Wii Menu or Wii Party:
+   - Aim at the middle of the TV and tap **Center**. The pointer should follow the phone smoothly, up/down and left/right in the right directions, and A should select.
+   - If it moves too fast or too slow across the screen, try **Total Yaw** under Point in Dolphin (default 25°), and tell me what feels right; I can put it in the profile.
+   - Try a motion minigame (a shake or a twist) to check the remote's orientation feels right while pointing.
+   - Switch between sideways and pointing in the middle of a game; Dolphin needs no change.
+7. With the phone on **Classic Controller**, load **MobiPad Classic Player 1** in Dolphin and try a Wii game that supports the Classic Controller (Mario Kart Wii does).
+8. Check that nothing else changed: the GameCube profile in Dolphin, Cemu, and Ryujinx with "Player 1 as keyboard", all with the phone on Classic Controller.
+9. On the phone: Edit Layout in both Wii Remote modes (tilt should pause while editing), switching controllers while connected, and battery and heat after a long session with tilt.
+10. With your friend: a phone with yesterday's build should still work with the new Mac app on the Classic Controller layout.
 
 ## Decisions
 
-- **The phone reports its motion as a normal landscape controller, and Dolphin's "Sideways Wii Remote" option turns it into a sideways remote.** Dolphin's Sideways option rotates both the D-pad and the motion data by a quarter turn (`GetOrientation()` in WiimoteEmu.cpp), and that's how it treats every motion controller. The profile turns the option on, so the phone's left end becomes the remote's IR end, and the on-screen D-pad works in screen directions.
+- **The phone turns its motion sideways itself, and Dolphin's "Sideways Wii Remote" option stays off.** At first the profile switched that option on and let Dolphin turn the motion and D-pad. That broke pointer games like Wii Party, where the remote is held upright: Dolphin's option would turn the motion for those too, and changing it means editing the profile. Now the phone does the same quarter turn (`Motion.turnedSideways`, checked in a test against Dolphin's `GetOrientation`) only in the sideways layout, and the sideways D-pad sends the turned directions. One profile serves every hold, and the player can switch holds mid-game.
+- **Pointing uses Dolphin's gyroscope pointer** ("Point" under Motion Input, `IMUIR`, on by default on the Mac). It follows the gyroscope relative to where it started; up and down are anchored by gravity, left and right are limited to Total Yaw (25°). The phone is held flat with its top edge toward the TV, which is how Dolphin aims a controller that isn't turned sideways.
+- **Center sends R3**, which neither Wii Remote layout uses otherwise, and the profile maps it to `IMUIR/Recenter`.
+- **Wii Remote (pointing) layout:** A big under the right thumb, B big under the left (the two buttons pointer games use most), the D-pad above B, 1 and 2 small at the bottom right, and −, Home, + and Center in the middle.
+- **Motion at 100 Hz** instead of 60, for a smoother pointer. That's 100 small packets a second per phone in the Wii Remote modes; Classic Controller is unchanged.
+- **The Mac menu shows a tilt dot instead of a turning wheel,** because the motion it receives is turned sideways in one mode and not in the other; a level bubble reads right either way. The phone's own steering wheel works from its unturned readings.
 - **Frame of `Motion`:** x points to the right edge of the screen as the player holds it, y to the top edge, z out of the screen. Acceleration is what an accelerometer measures (+1 g on z when lying face up); rotation follows the right-hand rule, in °/s.
 - **Mapping to Dolphin** (from `DualShockUDPClient.cpp`): accelerometer x = left (−x), y = −up (−z), z = forward (+y); gyro pitch = +x, yaw = −z, roll = +y. The Wii Remote profile maps each `IMUAccelerometer`/`IMUGyroscope` direction to the DSU input of the same name, as Dolphin's own defaults do. `DSUMotionTests` read the packet the way Dolphin does, including its Sideways rotation.
 - **Motion travels inside the state snapshot** as an optional block, not as a separate message. One packet keeps carrying everything, and the DSU packet already had the fields.
 - **The protocol version stays at 3.** Phones without tilt send the same 16 bytes as before, so a phone with an older build keeps working with the new Mac app. Only a tilting phone needs the new Mac app. The alternative, bumping the version, would have locked older phones out entirely.
-- **Wii Remote buttons reuse the existing state buttons:** A → A, B → B, 1 → X, 2 → Y, − → View, + → Menu, Home → Home (over DSU: Cross, Circle, Square, Triangle, Share, Options, PS). The Wii Remote profile maps them back, so the wire format and the Mac side needed no new buttons.
+- **Wii Remote buttons reuse the existing state buttons** (in both Wii Remote layouts): A → A, B → B, 1 → X, 2 → Y, − → View, + → Menu, Home → Home (over DSU: Cross, Circle, Square, Triangle, Share, Options, PS). The Wii Remote profile maps them back, so the wire format and the Mac side needed no new buttons.
 - **Set Up Dolphin writes all three profile kinds at once**, so there's still one button. Two existing tests listed exactly the four GameCube profile names in the outcome. I updated those two expectations to the full list of twelve and kept their checks of the GameCube files. No test was removed or skipped.
 - **Classic Controller profiles match buttons by name**, like the GameCube ones: LB/RB → L/R, LT/RT → ZL/ZR, View → −, Menu → +.
 - **Wii Remote layout:** D-pad and A on the left, larger 1 and 2 on the right, B top left (where the trigger is when the remote is held sideways), and −, Home, + in the middle. The Wii Remote controls are separate entries in the same saved layout, so existing saved layouts still load and each controller keeps its own positions. Show/Hide and Reset in the editor only touch the controller on screen. Switching controllers releases every button.
-- **Tilt runs only in Wii Remote mode on the controller screen**, and pauses in the layout editor. When it stops, the phone sends one state without motion, so Dolphin reads zero motion instead of a frozen last reading.
+- **Motion runs only in the Wii Remote modes on the controller screen**, and pauses in the layout editor. When it stops, the phone sends one state without motion, so Dolphin reads zero motion instead of a frozen last reading.
 - **Motion is kept out of the controller screen's own state.** `AppModel` combines the latest tilt with the last buttons, so 60 readings a second only redraw the small steering wheel.
 - **No permission prompt:** `CMMotionManager`'s accelerometer and gyroscope need none, so `Info.plist` is unchanged.
 - **Which way round the phone is held** is read from the window scene's interface orientation with every sample, so both landscape directions work.
@@ -88,8 +102,9 @@ Docs: `README.md` and this file.
 ## Unfinished or uncertain
 
 - **Not run on a device or in Dolphin.** All of the mapping rests on reading Dolphin's source plus the tests above. Steering direction is the first thing to check (step 5 of the manual test).
-- **The Wii Remote layout hasn't been looked at.** The Simulator keeps its data outside the project folder, so I didn't use it. I checked by calculation that no controls overlap on the smallest or a large iPhone. A screenshot on your phone is still worth a look.
-- **No Nunchuk, and no upright (pointing) Wii Remote mode.** The Wii Remote layout is the sideways one, for steering games. The pointer is left to Dolphin's defaults.
+- **Layouts:** overnight I didn't use the Simulator (your folder rule). Afterwards, with you back, I checked both Wii Remote layouts in the Simulator, and by calculation that no controls overlap on the smallest or a large iPhone.
+- **No Nunchuk.** Wii Party doesn't need one, but some games do.
+- **The pointer's feel is untested.** Total Yaw and Dolphin's other Point settings are left at their defaults until you've tried it.
 - **While tilt is paused** (layout editor), Dolphin reads zero acceleration, which is what a remote in free fall would report. That only happens while editing.
 
 ## Safety rules: what this needed but I didn't do
@@ -104,7 +119,7 @@ Docs: `README.md` and this file.
 
 - **The base commit `54cd51a` holds your earlier uncommitted work.** If you want that on `main` without the tilt feature, cherry-pick that one commit.
 - **Whether to bump the protocol version** after all (see Decisions), if you'd rather have a clear "can't connect" than a silently ignored tilting phone with an old Mac app.
-- **Whether to add a Nunchuk mode or an upright Wii Remote mode** later.
+- **Whether to add a Nunchuk** later.
 
 ## Background: how input gets to Dolphin
 
@@ -119,5 +134,6 @@ Docs: `README.md` and this file.
 
 - The DSU client exposes `Accel Up/Down/Left/Right/Forward/Backward` (Up = −accel_y, Left = +accel_x, Forward = +accel_z, in g → m/s²) and `Gyro Pitch Up/Down`, `Roll Left/Right`, `Yaw Left/Right` (Pitch Up = +pitch, Roll Right = +roll, Yaw Right = +yaw, in °/s → rad/s).
 - The emulated Wii Remote's `IMUAccelerometer` and `IMUGyroscope` groups (Motion Input) combine opposite directions (for example Up − Down) into Dolphin's frame: x = left, y = backward, z = up. When they're bound, Dolphin uses them instead of its simulated tilt.
-- `Options/Sideways Wiimote` rotates the D-pad and the motion by a quarter turn around the remote's up axis.
+- `Options/Sideways Wiimote` rotates the D-pad and the motion by a quarter turn around the remote's up axis. MobiPad leaves it off and does the same turn on the phone.
+- The gyroscope pointer (`IMUIR`) is on by default on the Mac and has a Recenter input. It works from the gyroscope without any sideways turn applied.
 - Wii Remote profiles live in `Config/Profiles/Wiimote/`. The extension is chosen with `Extension = None` or `Classic`, and the Classic Controller's keys are prefixed `Classic/`.

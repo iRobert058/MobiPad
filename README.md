@@ -42,18 +42,19 @@ You need Xcode (free, from the Mac App Store) and your Apple ID. A paid develope
    To try the iPhone app without a phone, run the **MobiPad** scheme on an iPhone Simulator instead. It finds the Mac app the same way. Turn the Simulator to landscape with ⌘→.
 5. In the iPhone app, type your name and pick your Mac. The first time, the Mac asks **"Allow … to connect?"**. After you click Allow, the phone shows up as a player and is remembered from then on.
 
-### Classic Controller or Wii Remote
+### Classic Controller or a Wii Remote
 
 Choose the controller on the start screen, or with the menu next to **Edit Layout** on the controller screen:
 
 - **Classic Controller:** two sticks, A/B/X/Y, shoulder buttons and triggers. Works with every emulator, as before.
-- **Wii Remote:** a Wii Remote held sideways (D-pad, A, B, 1, 2, −, Home, +), steered by tilting the phone. For Wii games in Dolphin; see below. The steering wheel next to the player name turns as you tilt, so you can see tilt is working.
+- **Wii Remote (sideways):** held like a steering wheel or an NES pad, screen toward you. Tilting the phone steers, as in Mario Kart Wii. The steering wheel next to the player name turns as you tilt, so you can see tilt is working.
+- **Wii Remote (pointing):** for pointer games like Wii Party and the Wii Menu. Hold the phone flat in both hands, screen up, with its top edge toward the TV, and aim with it. A is big under your right thumb and B under your left. Aim at the middle of the TV and tap **Center** to recenter the pointer whenever it drifts.
 
-Wii Remote mode needs the Mac app from the same version. An older Mac app ignores the phone while it tilts.
+Both Wii Remotes are for Wii games in Dolphin (see below), and you can switch between them mid-game, for example between Wii Party's minigames. They need the Mac app from the same version: an older Mac app ignores the phone while it sends motion.
 
 ### Changing the controller layout
 
-Tap **Edit Layout** at the top of the controller screen. Drag a control to move it, and pinch it to resize it. For a small button, tap it and use the slider, or pinch on an empty part of the screen. **Show/Hide** turns controls on and off, including L3, R3 and Home, which start off. The D-pad and A/B/X/Y move as one block each. **Done** saves the layout on the phone, **Cancel** throws the changes away, and **Reset** goes back to the standard layout. The Classic Controller and the Wii Remote each keep their own layout; Show/Hide and Reset only change the one on screen.
+Tap **Edit Layout** at the top of the controller screen. Drag a control to move it, and pinch it to resize it. For a small button, tap it and use the slider, or pinch on an empty part of the screen. **Show/Hide** turns controls on and off, including L3, R3 and Home, which start off. The D-pad and A/B/X/Y move as one block each. **Done** saves the layout on the phone, **Cancel** throws the changes away, and **Reset** goes back to the standard layout. Each controller keeps its own layout; Show/Hide and Reset only change the one on screen.
 
 ### Checking an emulator without a phone
 
@@ -63,7 +64,7 @@ Turn on **Test controller** in the Mac menu. It joins as a player that circles i
 
 1. In the Mac menu, click **Set Up Dolphin**. It adds MobiPad to Dolphin as a DSU server, if it isn't there yet, and adds three profiles for each player: a GameCube controller, a Wii Remote with tilt, and a Classic Controller. It doesn't change your current controller settings. If the server has to be added while Dolphin is open, it asks you to quit Dolphin first, because Dolphin overwrites its settings when it quits.
 2. In Dolphin, open **Controllers**, set Port 1 to **Standard Controller**, click **Configure**, pick **MobiPad Player 1** under Profile, and click **Load**. For more players, load MobiPad Player 2 on Port 2, and so on.
-3. For a Wii controller instead, set **Wii Remote 1** to **Emulated Wii Remote**, click **Configure**, and load **MobiPad Wii Remote Player 1** (phone on Wii Remote) or **MobiPad Classic Player 1** (phone on Classic Controller). Wii Remote 2 gets Player 2, and so on.
+3. For a Wii controller instead, set **Wii Remote 1** to **Emulated Wii Remote**, click **Configure**, and load **MobiPad Wii Remote Player 1** (phone on either Wii Remote) or **MobiPad Classic Player 1** (phone on Classic Controller). Wii Remote 2 gets Player 2, and so on.
 
 The GameCube profiles match buttons by name:
 
@@ -76,7 +77,9 @@ The GameCube profiles match buttons by name:
 
 LB, View, Home, L3 and R3 aren't used. To change a button, remap it in Dolphin and save the profile under another name, because Set Up Dolphin overwrites the MobiPad profiles.
 
-The **Wii Remote** profiles use the phone's Wii Remote layout button for button (A, B, 1, 2, −, Home, + and the D-pad). They map the phone's motion to the Wii Remote's accelerometer and gyroscope (Motion Input), and turn on **Sideways Wii Remote**. Hold the phone like a steering wheel, screen toward you: tilting it steers, like a Wii Remote in a Wii Wheel, and the phone's left end is the remote's IR end. Shaking works too, for Mario Kart's tricks and wheelies.
+The **Wii Remote** profiles use the phone's Wii Remote buttons as they are (A, B, 1, 2, −, Home, + and the D-pad), and map the phone's motion to the Wii Remote's accelerometer and gyroscope (Motion Input). One profile serves both ways of holding the phone. When you hold it sideways, the phone turns its motion and D-pad itself, so leave Dolphin's **Sideways Wii Remote** option off. Sideways, the phone's left end is the remote's IR end, like a Wii Remote in a Wii Wheel, and shaking works for Mario Kart's tricks and wheelies.
+
+The pointer is Dolphin's **Point** under Motion Input, which follows the phone's gyroscope (it's on by default). The phone's **Center** button recenters it. If the pointer crosses the screen too quickly or too slowly when you turn the phone, change **Total Yaw** under Point (default 25°; higher is slower).
 
 The **Classic Controller** profiles match buttons by name: A, B, X, Y; LB/RB are L/R, LT/RT are ZL/ZR, View is −, Menu is +, and Home, both sticks and the D-pad map directly. No tilt.
 
@@ -159,7 +162,7 @@ Done, and tested in the package:
 - **Keyboard key mapping for Ryujinx.**
 - **Test controller in the Mac menu.**
 - **Set Up Dolphin (UX-01):** the DSU server entry and the GameCube, Wii Remote and Classic Controller profiles. Not yet loaded in Dolphin itself.
-- **Tilt (Wii Remote mode):** the motion in the wire format, turning Core Motion readings into the controller's axes, the DSU motion fields as Dolphin reads them (including its Sideways option), and the profiles' key and input names against Dolphin's source. Not yet tried on a device or in Dolphin; see [TILT_NOTES.md](TILT_NOTES.md).
+- **Motion (both Wii Remotes):** the motion in the wire format, turning Core Motion readings into the controller's axes, the sideways turn (checked against Dolphin's own Sideways option), the DSU motion fields as Dolphin reads them, and the profiles' key and input names against Dolphin's source. Not yet tried on a device or in Dolphin; see [TILT_NOTES.md](TILT_NOTES.md).
 
 Checked on this Mac without Xcode:
 - `project.yml` generates a valid Xcode project (app IDs, OS versions, package links).
