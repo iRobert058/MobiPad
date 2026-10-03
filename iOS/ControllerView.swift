@@ -328,6 +328,8 @@ struct ControllerView: View {
         case .wiiMinus: button("−", .view, size: size)
         case .wiiHome: button("Home", .home, size: size)
         case .wiiPlus: button("+", .menu, size: size)
+        // Recenters Dolphin's pointer on where the phone points (IMUIR/Recenter in the profile).
+        case .wiiRecenter: button("Center", .rightStickPress, size: size)
         }
     }
 
@@ -382,7 +384,7 @@ private extension ControllerLayout.Control {
             CGSize(width: Metrics.button * 3, height: Metrics.button * 3 + Metrics.crossSpacing * 2)
         case .leftTrigger, .leftShoulder, .rightShoulder, .rightTrigger,
              .view, .menu, .home, .leftStickPress, .rightStickPress,
-             .wiiA, .wiiB, .wiiOne, .wiiTwo, .wiiMinus, .wiiHome, .wiiPlus:
+             .wiiA, .wiiB, .wiiOne, .wiiTwo, .wiiMinus, .wiiHome, .wiiPlus, .wiiRecenter:
             CGSize(width: Metrics.button, height: Metrics.button)
         }
         return CGSize(width: size.width * scale, height: size.height * scale)

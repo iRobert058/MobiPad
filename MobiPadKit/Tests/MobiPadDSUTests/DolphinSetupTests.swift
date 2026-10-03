@@ -109,10 +109,11 @@ struct DolphinSetupTests {
         "Gyro Pitch Up", "Gyro Pitch Down", "Gyro Roll Left", "Gyro Roll Right", "Gyro Yaw Left", "Gyro Yaw Right",
     ]
 
-    /// Profile keys of an emulated Wii Remote, from Dolphin's WiimoteEmu.h, IMUAccelerometer.cpp,
-    /// IMUGyroscope.cpp and Extension/Classic.h. A misspelled key would be silently ignored.
+    /// Profile keys of an emulated Wii Remote, from Dolphin's WiimoteEmu.h/.cpp (the pointer group is
+    /// "IMUIR"), IMUAccelerometer.cpp, IMUGyroscope.cpp, IMUCursor.cpp and Extension/Classic.h. A
+    /// misspelled key would be silently ignored.
     static let wiimoteKeys: Set<String> = {
-        var keys: Set<String> = ["Device", "Extension", "Options/Sideways Wiimote", "Options/Upright Wiimote"]
+        var keys: Set<String> = ["Device", "Extension", "Options/Sideways Wiimote", "Options/Upright Wiimote", "IMUIR/Recenter"]
         for button in ["A", "B", "1", "2", "-", "+", "Home"] { keys.insert("Buttons/\(button)") }
         for direction in ["Up", "Down", "Left", "Right"] {
             keys.insert("D-Pad/\(direction)")
@@ -150,7 +151,9 @@ struct DolphinSetupTests {
 
         #expect(Set(settings.keys).isSubset(of: Self.wiimoteKeys))
         #expect(Set(settings.values.compactMap(Self.input)).isSubset(of: Self.dsuInputs))
-        #expect(settings.values.compactMap(Self.input).count == 23)
+        #expect(settings.values.compactMap(Self.input).count == 24)
+        // The phone's Center button recenters Dolphin's pointer.
+        #expect(settings["IMUIR/Recenter"] == "`R3`")
         // The phone turns its motion sideways itself, so Dolphin mustn't turn it again.
         #expect(settings["Options/Sideways Wiimote"] == "False")
         #expect(settings["Extension"] == "None")

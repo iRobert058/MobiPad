@@ -51,7 +51,7 @@ extension ControllerLayout {
         case leftTrigger, leftShoulder, rightShoulder, rightTrigger
         case view, menu, home, leftStickPress, rightStickPress
         // The Wii Remote layout, held sideways like an NES pad.
-        case wiiDpad, wiiA, wiiB, wiiOne, wiiTwo, wiiMinus, wiiHome, wiiPlus
+        case wiiDpad, wiiA, wiiB, wiiOne, wiiTwo, wiiMinus, wiiHome, wiiPlus, wiiRecenter
 
         var id: Self { self }
 
@@ -60,7 +60,7 @@ extension ControllerLayout {
             case .leftStick, .rightStick, .dpad, .faceButtons, .leftTrigger, .leftShoulder, .rightShoulder,
                  .rightTrigger, .view, .menu, .home, .leftStickPress, .rightStickPress:
                 .classic
-            case .wiiDpad, .wiiA, .wiiB, .wiiOne, .wiiTwo, .wiiMinus, .wiiHome, .wiiPlus:
+            case .wiiDpad, .wiiA, .wiiB, .wiiOne, .wiiTwo, .wiiMinus, .wiiHome, .wiiPlus, .wiiRecenter:
                 .wiiRemote
             }
         }
@@ -88,6 +88,7 @@ extension ControllerLayout {
             case .wiiMinus: "−"
             case .wiiHome: "Home"
             case .wiiPlus: "+"
+            case .wiiRecenter: "Center (recenters the pointer)"
             }
         }
 
@@ -117,6 +118,7 @@ extension ControllerLayout {
             case .wiiPlus: Placement(center: CGPoint(x: 0.58, y: 0.5))
             case .wiiOne: Placement(center: CGPoint(x: 0.74, y: 0.56), scale: 1.5)
             case .wiiTwo: Placement(center: CGPoint(x: 0.9, y: 0.56), scale: 1.5)
+            case .wiiRecenter: Placement(center: CGPoint(x: 0.5, y: 0.8), scale: 1.2)
             }
         }
     }

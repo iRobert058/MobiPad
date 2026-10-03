@@ -108,6 +108,10 @@ public enum DolphinSetup {
     /// the player holds the phone sideways, the phone turns its motion and D-pad itself, so this one
     /// profile works for both ways of holding it. The phone sends its Wii Remote buttons as
     /// A → Cross, B → Circle, 1 → Square, 2 → Triangle, − → Share, + → Options and Home → PS.
+    ///
+    /// The pointer comes from Dolphin's "Point" under Motion Input (`IMUIR`), which follows the
+    /// gyroscope and is on by default. The phone's Center button (R3) recenters it on where the
+    /// phone points.
     static func wiiRemoteProfile(slot: Int, serverName: String) -> String {
         """
         [Profile]
@@ -135,6 +139,7 @@ public enum DolphinSetup {
         IMUGyroscope/Roll Right = `Gyro Roll Right`
         IMUGyroscope/Yaw Left = `Gyro Yaw Left`
         IMUGyroscope/Yaw Right = `Gyro Yaw Right`
+        IMUIR/Recenter = `R3`
         Options/Sideways Wiimote = False
         Extension = None
 
