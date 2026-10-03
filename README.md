@@ -79,7 +79,7 @@ LB, View, Home, L3 and R3 aren't used. To change a button, remap it in Dolphin a
 
 The **Wii Remote** profiles use the phone's Wii Remote buttons as they are (A, B, 1, 2, −, Home, + and the D-pad), and map the phone's motion to the Wii Remote's accelerometer and gyroscope (Motion Input). One profile serves both ways of holding the phone. When you hold it sideways, the phone turns its motion and D-pad itself, so leave Dolphin's **Sideways Wii Remote** option off. Sideways, the phone's left end is the remote's IR end, like a Wii Remote in a Wii Wheel, and shaking works for Mario Kart's tricks and wheelies.
 
-The pointer is Dolphin's **Point** under Motion Input, which follows the phone's gyroscope (it's on by default). The phone's **Center** button recenters it. If the pointer crosses the screen too quickly or too slowly when you turn the phone, change **Total Yaw** under Point (default 25°; higher is slower).
+The pointer is Dolphin's **Point** under Motion Input, which follows the phone's gyroscope (it's on by default). The phone's **Center** button recenters it. MobiPad's profile turns off Point's **Accelerometer Influence**, so up and down follow the gyroscope just like left and right; press Center whenever the pointer has wandered. If the pointer crosses the screen too quickly or too slowly when you turn the phone, change **Total Yaw** under Point (default 25°; higher is slower).
 
 The **Classic Controller** profiles match buttons by name: A, B, X, Y; LB/RB are L/R, LT/RT are ZL/ZR, View is −, Menu is +, and Home, both sticks and the D-pad map directly. No tilt.
 

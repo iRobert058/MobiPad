@@ -113,6 +113,10 @@ public enum DolphinSetup {
     /// gyroscope and is on by default. The phone's Center button (R3) recenters it on where the
     /// phone points.
     ///
+    /// The pointer's Accelerometer Influence is off, so up and down follow the gyroscope alone, like
+    /// left and right. With it on, Dolphin took the phone's own movement (a quick aim, or a thumb
+    /// pushing a button) for a change of tilt and jumped the pointer up or down by a few degrees.
+    ///
     /// Dolphin's gyroscope calibration is off. iOS already removes the gyroscope's offset, and
     /// Dolphin's calibration starts from the first reading after the phone connects: taken while the
     /// phone moves, that makes the pointer drift until the phone is held perfectly still for 3 seconds.
@@ -145,6 +149,7 @@ public enum DolphinSetup {
         IMUGyroscope/Yaw Right = `Gyro Yaw Right`
         IMUGyroscope/Calibration Period = 0
         IMUIR/Recenter = `R3`
+        IMUIR/Accelerometer Influence = 0
         Options/Sideways Wiimote = False
         Extension = None
 

@@ -4,10 +4,18 @@ Branch: `tilt-controls`, made from `main` on 2026-10-03. Nothing is pushed or me
 
 ## Progress
 
-- **Done:** the original eight steps; the pointer work (sideways turn on the phone, Center button, Wii Remote (pointing) layout); Dolphin's gyroscope calibration switched off in the Wii Remote profile (2026-10-03, after your first live test).
-- **Working on:** nothing. Waiting for your next live test.
-- **Next step:** find out why the pointer's up and down is bad (see "Open: vertical pointer" below), then fix it.
-- **Half-finished or broken:** the vertical pointer, as you reported. Left and right work well.
+- **Done:** the original eight steps; the pointer work; after the live tests: Dolphin's gyroscope calibration off, Point's Accelerometer Influence off, and buttons that always count a completed tap.
+- **Working on:** nothing. Waiting for the next live test.
+- **Next step:** check up and down and the A button in Wii Party (see "Second live test" below). If both are good, check Mario Kart steering and merge into `main`.
+- **Half-finished or broken:** nothing known.
+
+## Second live test (2026-10-03)
+
+- **Better, but up and down still worse than left and right, and A sometimes doesn't register.**
+- **Cause of up and down, by simulation** (Dolphin's pointer code ported, fed realistic wrist movement): Dolphin pulls up/down, but not left/right, toward the accelerometer ("Accelerometer Influence", 2%). The accelerometer also feels the phone's own movement, which Dolphin takes for tilt. With quick flicks and the phone tilted 35° toward you, up/down was off by 5.1° on average (8.5° worst) after pressing Center. With the influence at 0% it's 0.4°, the same as left/right. Sending gravity without the movement fixed it equally well, but would also hide small motions from games, so I chose the profile setting.
+- **Likely cause of missed A presses:** a thumb pushing the screen is the same kind of movement. At 2% a firm tap jumped the pointer up or down by about 2° (roughly 150 pixels on a TV), enough to slide off a button just as A was pressed. At 0% it doesn't move.
+- **Also:** on the right half of this iPhone's screen, iOS can hold back a lone tap and deliver its start and end together (see the earlier touch-delay finding). The button now counts a press when the touch ends even if it never reported a change, so such a tap can't get lost.
+- **Changes:** `IMUIR/Accelerometer Influence = 0` in the Wii Remote profile; `PressableButton` presses on `onEnded` as well.
 
 ## First live test (2026-10-03)
 

@@ -436,7 +436,11 @@ private struct PressableButton: View {
                 DragGesture(minimumDistance: 0)
                     .updating($isTouched) { _, touched, _ in touched = true }
                     .onChanged { _ in press() }
-                    .onEnded { _ in release() }
+                    // A held-back tap can end without ever reporting a change, so it counts as a press here.
+                    .onEnded { _ in
+                        press()
+                        release()
+                    }
             )
             // A cancelled touch doesn't call onEnded.
             .onChange(of: isTouched) { _, touched in
