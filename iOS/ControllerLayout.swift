@@ -4,17 +4,24 @@ import CoreGraphics
 enum ControllerKind: String, CaseIterable, Identifiable {
     /// Two sticks, A/B/X/Y, shoulders and triggers. No tilt.
     case classic
-    /// A Wii Remote held sideways, steered by tilting the phone. For Dolphin.
+    /// A Wii Remote held sideways, steered by tilting the phone (Mario Kart). For Dolphin.
     case wiiRemote
+    /// A Wii Remote pointed at the TV: the phone lies flat in the hands, top edge toward the TV, and
+    /// aims Dolphin's pointer (Wii Party, the Wii Menu). For Dolphin.
+    case wiiPointer
 
     var id: Self { self }
 
     var name: String {
         switch self {
         case .classic: "Classic Controller"
-        case .wiiRemote: "Wii Remote"
+        case .wiiRemote: "Wii Remote (sideways)"
+        case .wiiPointer: "Wii Remote (pointing)"
         }
     }
+
+    /// The Wii Remotes send the phone's motion.
+    var usesMotion: Bool { self != .classic }
 }
 
 /// Where each control sits on the controller screen, how big it is, and whether it's shown (UX-03).
@@ -52,6 +59,8 @@ extension ControllerLayout {
         case view, menu, home, leftStickPress, rightStickPress
         // The Wii Remote layout, held sideways like an NES pad.
         case wiiDpad, wiiA, wiiB, wiiOne, wiiTwo, wiiMinus, wiiHome, wiiPlus, wiiRecenter
+        // The Wii Remote pointed at the TV.
+        case pointDpad, pointA, pointB, pointOne, pointTwo, pointMinus, pointHome, pointPlus, pointRecenter
 
         var id: Self { self }
 
@@ -62,6 +71,9 @@ extension ControllerLayout {
                 .classic
             case .wiiDpad, .wiiA, .wiiB, .wiiOne, .wiiTwo, .wiiMinus, .wiiHome, .wiiPlus, .wiiRecenter:
                 .wiiRemote
+            case .pointDpad, .pointA, .pointB, .pointOne, .pointTwo, .pointMinus, .pointHome, .pointPlus,
+                 .pointRecenter:
+                .wiiPointer
             }
         }
 
@@ -88,7 +100,15 @@ extension ControllerLayout {
             case .wiiMinus: "−"
             case .wiiHome: "Home"
             case .wiiPlus: "+"
-            case .wiiRecenter: "Center (recenters the pointer)"
+            case .wiiRecenter, .pointRecenter: "Center (recenters the pointer)"
+            case .pointDpad: "D-pad"
+            case .pointA: "A"
+            case .pointB: "B"
+            case .pointOne: "1"
+            case .pointTwo: "2"
+            case .pointMinus: "−"
+            case .pointHome: "Home"
+            case .pointPlus: "+"
             }
         }
 
@@ -119,6 +139,17 @@ extension ControllerLayout {
             case .wiiOne: Placement(center: CGPoint(x: 0.74, y: 0.56), scale: 1.5)
             case .wiiTwo: Placement(center: CGPoint(x: 0.9, y: 0.56), scale: 1.5)
             case .wiiRecenter: Placement(center: CGPoint(x: 0.5, y: 0.8), scale: 1.2)
+            // Pointing: A big under the right thumb and B under the left, the buttons a pointer game
+            // uses most. The D-pad above B, 1 and 2 small, and −, Home, + in the middle.
+            case .pointA: Placement(center: CGPoint(x: 0.86, y: 0.5), scale: 1.8)
+            case .pointB: Placement(center: CGPoint(x: 0.13, y: 0.66), scale: 1.6)
+            case .pointDpad: Placement(center: CGPoint(x: 0.14, y: 0.27))
+            case .pointMinus: Placement(center: CGPoint(x: 0.42, y: 0.5))
+            case .pointHome: Placement(center: CGPoint(x: 0.5, y: 0.5))
+            case .pointPlus: Placement(center: CGPoint(x: 0.58, y: 0.5))
+            case .pointOne: Placement(center: CGPoint(x: 0.64, y: 0.82))
+            case .pointTwo: Placement(center: CGPoint(x: 0.76, y: 0.82))
+            case .pointRecenter: Placement(center: CGPoint(x: 0.5, y: 0.8), scale: 1.2)
             }
         }
     }

@@ -30,8 +30,8 @@ struct ControllerView: View {
 
     private var layout: ControllerLayout { draft ?? model.layout }
 
-    /// Tilt is part of the Wii Remote, and pauses while the layout is being edited.
-    private var usesTilt: Bool { model.controllerKind == .wiiRemote && draft == nil }
+    /// Motion is part of the Wii Remotes, and pauses while the layout is being edited.
+    private var usesTilt: Bool { model.controllerKind.usesMotion && draft == nil }
 
     /// The controls of the controller the phone acts as.
     private var controls: [Control] {
@@ -329,7 +329,23 @@ struct ControllerView: View {
         case .wiiHome: button("Home", .home, size: size)
         case .wiiPlus: button("+", .menu, size: size)
         // Recenters Dolphin's pointer on where the phone points (IMUIR/Recenter in the profile).
-        case .wiiRecenter: button("Center", .rightStickPress, size: size)
+        case .wiiRecenter, .pointRecenter: button("Center", .rightStickPress, size: size)
+        // Pointed at the TV, the remote's up is the phone's top edge, so its D-pad isn't turned.
+        case .pointDpad:
+            cross(
+                scale: scale,
+                top: button("▲", .dpadUp, size: size),
+                left: button("◀", .dpadLeft, size: size),
+                right: button("▶", .dpadRight, size: size),
+                bottom: button("▼", .dpadDown, size: size)
+            )
+        case .pointA: button("A", .a, size: size)
+        case .pointB: button("B", .b, size: size)
+        case .pointOne: button("1", .x, size: size)
+        case .pointTwo: button("2", .y, size: size)
+        case .pointMinus: button("−", .view, size: size)
+        case .pointHome: button("Home", .home, size: size)
+        case .pointPlus: button("+", .menu, size: size)
         }
     }
 
@@ -380,11 +396,12 @@ private extension ControllerLayout.Control {
         let size: CGSize = switch self {
         case .leftStick, .rightStick:
             CGSize(width: Metrics.stickRadius * 2, height: Metrics.stickRadius * 2)
-        case .dpad, .faceButtons, .wiiDpad:
+        case .dpad, .faceButtons, .wiiDpad, .pointDpad:
             CGSize(width: Metrics.button * 3, height: Metrics.button * 3 + Metrics.crossSpacing * 2)
         case .leftTrigger, .leftShoulder, .rightShoulder, .rightTrigger,
              .view, .menu, .home, .leftStickPress, .rightStickPress,
-             .wiiA, .wiiB, .wiiOne, .wiiTwo, .wiiMinus, .wiiHome, .wiiPlus, .wiiRecenter:
+             .wiiA, .wiiB, .wiiOne, .wiiTwo, .wiiMinus, .wiiHome, .wiiPlus, .wiiRecenter,
+             .pointA, .pointB, .pointOne, .pointTwo, .pointMinus, .pointHome, .pointPlus, .pointRecenter:
             CGSize(width: Metrics.button, height: Metrics.button)
         }
         return CGSize(width: size.width * scale, height: size.height * scale)

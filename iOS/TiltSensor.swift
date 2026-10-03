@@ -3,7 +3,8 @@ import MobiPadProtocol
 import Observation
 import UIKit
 
-/// Reads the phone's motion sensors for the Wii Remote layout, 60 times a second.
+/// Reads the phone's motion sensors for the Wii Remote layouts, 100 times a second, which keeps
+/// Dolphin's pointer smooth.
 ///
 /// Reading the accelerometer and gyroscope this way needs no permission from the user.
 @MainActor @Observable
@@ -25,7 +26,7 @@ final class TiltSensor {
         // Takes over the shared manager, in case an earlier sensor left it running.
         manager.stopDeviceMotionUpdates()
         self.onUpdate = onUpdate
-        manager.deviceMotionUpdateInterval = 1.0 / 60
+        manager.deviceMotionUpdateInterval = 1.0 / 100
         manager.startDeviceMotionUpdates(to: .main) { [weak self] data, _ in
             guard let data else { return }
             let gravity = ControllerState.Motion.Vector(data.gravity)

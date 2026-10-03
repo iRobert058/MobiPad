@@ -29,7 +29,7 @@ struct MacPickerView: View {
                         }
                     }
                 } footer: {
-                    Text("Wii Remote steers by tilting the phone, for Wii games in Dolphin.")
+                    Text("The Wii Remotes use the phone’s motion, for Wii games in Dolphin: sideways for steering, pointing for games like Wii Party.")
                 }
 
                 Section("Macs on this network") {
