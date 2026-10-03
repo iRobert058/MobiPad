@@ -4,10 +4,19 @@ Branch: `tilt-controls`, made from `main` on 2026-10-03. Nothing is pushed or me
 
 ## Progress
 
-- **Done:** the original eight steps, then (2026-10-03, after your question about pointing) the pointer work: the sideways turn moved from Dolphin to the phone, a Center button for Dolphin's pointer, and a Wii Remote (pointing) layout for games like Wii Party. The package tests pass (71 tests), both apps build, and I checked both Wii Remote layouts in the Simulator.
-- **Working on:** nothing.
-- **Next step:** your manual test on a real iPhone with Dolphin (checklist below).
-- **Half-finished or broken:** nothing known. Motion has not run on a real device or in Dolphin yet.
+- **Done:** the original eight steps; the pointer work (sideways turn on the phone, Center button, Wii Remote (pointing) layout); Dolphin's gyroscope calibration switched off in the Wii Remote profile (2026-10-03, after your first live test).
+- **Working on:** nothing. Waiting for your next live test.
+- **Next step:** find out why the pointer's up and down is bad (see "Open: vertical pointer" below), then fix it.
+- **Half-finished or broken:** the vertical pointer, as you reported. Left and right work well.
+
+## First live test (2026-10-03)
+
+- **The pointer works**, and left and right are good.
+- **Drift to the left while still, gone after reconnecting.** Most likely Dolphin's gyroscope calibration: when the phone connects, Dolphin takes its first gyroscope reading as zero (`IMUGyroscope::UpdateCalibration`) and only replaces it after 3 seconds of near-perfect stillness. If the phone moved at that moment, the pointer drifts. iOS already removes the gyroscope's offset, so the profile now sets `IMUGyroscope/Calibration Period = 0`.
+- **Open: vertical pointer.** You described up and down as "a disaster". I ported Dolphin's pointer code and simulated it with MobiPad's data: a still, tilted phone settles within a second, and MobiPad's accelerometer and gyroscope agree with each other in Dolphin's frame. So it isn't a simple sign error in what MobiPad sends. Candidates, to tell apart in the next test:
+  - a bad calibration on the up/down axis (fixed by the change above, if that was it);
+  - Dolphin's accelerometer correction ("Accelerometer Influence", 2%) pulling the pointer up or down while the phone moves;
+  - the way the phone is held: Dolphin aims along the phone's top edge, so held upright like a camera, up and down behave badly.
 
 ## What you get
 

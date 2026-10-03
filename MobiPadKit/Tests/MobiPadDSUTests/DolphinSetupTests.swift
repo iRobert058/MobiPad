@@ -113,7 +113,8 @@ struct DolphinSetupTests {
     /// "IMUIR"), IMUAccelerometer.cpp, IMUGyroscope.cpp, IMUCursor.cpp and Extension/Classic.h. A
     /// misspelled key would be silently ignored.
     static let wiimoteKeys: Set<String> = {
-        var keys: Set<String> = ["Device", "Extension", "Options/Sideways Wiimote", "Options/Upright Wiimote", "IMUIR/Recenter"]
+        var keys: Set<String> = ["Device", "Extension", "Options/Sideways Wiimote", "Options/Upright Wiimote", "IMUIR/Recenter",
+                                   "IMUGyroscope/Calibration Period"]
         for button in ["A", "B", "1", "2", "-", "+", "Home"] { keys.insert("Buttons/\(button)") }
         for direction in ["Up", "Down", "Left", "Right"] {
             keys.insert("D-Pad/\(direction)")
@@ -154,6 +155,8 @@ struct DolphinSetupTests {
         #expect(settings.values.compactMap(Self.input).count == 24)
         // The phone's Center button recenters Dolphin's pointer.
         #expect(settings["IMUIR/Recenter"] == "`R3`")
+        // iOS already calibrates the gyroscope; Dolphin's own calibration made the pointer drift.
+        #expect(settings["IMUGyroscope/Calibration Period"] == "0")
         // The phone turns its motion sideways itself, so Dolphin mustn't turn it again.
         #expect(settings["Options/Sideways Wiimote"] == "False")
         #expect(settings["Extension"] == "None")

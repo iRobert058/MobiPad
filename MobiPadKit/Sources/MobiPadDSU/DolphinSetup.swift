@@ -112,6 +112,10 @@ public enum DolphinSetup {
     /// The pointer comes from Dolphin's "Point" under Motion Input (`IMUIR`), which follows the
     /// gyroscope and is on by default. The phone's Center button (R3) recenters it on where the
     /// phone points.
+    ///
+    /// Dolphin's gyroscope calibration is off. iOS already removes the gyroscope's offset, and
+    /// Dolphin's calibration starts from the first reading after the phone connects: taken while the
+    /// phone moves, that makes the pointer drift until the phone is held perfectly still for 3 seconds.
     static func wiiRemoteProfile(slot: Int, serverName: String) -> String {
         """
         [Profile]
@@ -139,6 +143,7 @@ public enum DolphinSetup {
         IMUGyroscope/Roll Right = `Gyro Roll Right`
         IMUGyroscope/Yaw Left = `Gyro Yaw Left`
         IMUGyroscope/Yaw Right = `Gyro Yaw Right`
+        IMUGyroscope/Calibration Period = 0
         IMUIR/Recenter = `R3`
         Options/Sideways Wiimote = False
         Extension = None
