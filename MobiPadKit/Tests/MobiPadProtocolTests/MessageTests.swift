@@ -11,6 +11,14 @@ struct MessageTests {
         rightTrigger: 7
     )
 
+    static let tiltState = ControllerState(
+        buttons: [.b],
+        motion: .init(
+            acceleration: .init(x: 0.5, y: -1, z: 0.25),
+            rotationRate: .init(x: 180, y: -90.5, z: 0)
+        )
+    )
+
     static let key = Data(repeating: 0xAB, count: 32)
 
     static let messages: [Message] = [
@@ -24,6 +32,7 @@ struct MessageTests {
 
     static let sessionMessages: [SessionMessage] = [
         .state(sequence: 0xDEAD_BEEF, busyState),
+        .state(sequence: 7, tiltState),
         .goodbye,
         .ping(token: .max),
         .pong(token: 42),
@@ -55,6 +64,27 @@ struct MessageTests {
         #expect(bytes[5..<7] == [0x21, 0x01]) // a | menu | dpadLeft
         #expect(bytes[7..<9] == [0x80, 0x01]) // -32767
         #expect(bytes[15..<17] == [255, 7])
+    }
+
+    @Test func motionFollowsTheStateAsBigEndianFloats() {
+        let bytes = [UInt8](SessionMessage.state(sequence: 1, Self.tiltState).encoded())
+        #expect(bytes.count == 1 + 16 + 24)
+        #expect(bytes[17..<21] == [0x3F, 0x00, 0x00, 0x00]) // acceleration x = 0.5
+        #expect(bytes[21..<25] == [0xBF, 0x80, 0x00, 0x00]) // acceleration y = -1
+        #expect(bytes[29..<33] == [0x43, 0x34, 0x00, 0x00]) // rotation x = 180
+    }
+
+    /// Phones without tilt, including ones built before motion existed, send no motion block.
+    @Test func stateWithoutMotionDecodesWithoutMotion() throws {
+        let decoded = try SessionMessage(decoding: SessionMessage.state(sequence: 1, Self.busyState).encoded())
+        guard case .state(_, let state) = decoded else { Issue.record("not a state"); return }
+        #expect(state.motion == nil)
+    }
+
+    @Test func rejectsAPartialMotionBlock() {
+        let full = SessionMessage.state(sequence: 1, Self.tiltState).encoded()
+        #expect(throws: Message.ParseError.wrongLength) { try SessionMessage(decoding: full.dropLast(12)) }
+        #expect(throws: Message.ParseError.wrongLength) { try SessionMessage(decoding: full + [0]) }
     }
 
     @Test func truncatesLongNames() throws {

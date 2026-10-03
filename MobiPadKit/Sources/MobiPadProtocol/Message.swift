@@ -106,7 +106,8 @@ public enum Message: Equatable, Sendable {
 ///
 /// | Type | Message | Direction   | Payload                                                                   |
 /// |------|---------|-------------|---------------------------------------------------------------------------|
-/// | 1    | state   | phone → Mac | sequence u32, buttons u16, left x/y, right x/y (i16), triggers (u8 each)   |
+/// | 1    | state   | phone → Mac | sequence u32, buttons u16, left x/y, right x/y (i16), triggers (u8 each); |
+/// |      |         |             | then, only with tilt: acceleration x/y/z, rotation rate x/y/z (f32 each)  |
 /// | 2    | goodbye | phone → Mac | none: the user disconnected (FR-02)                                       |
 /// | 3    | ping    | Mac → phone | token u64: measures latency and tells the phone the Mac is still there   |
 /// | 4    | pong    | phone → Mac | the ping's token                                                          |
@@ -123,6 +124,11 @@ public enum SessionMessage: Equatable, Sendable {
     private enum MessageType: UInt8 {
         case state = 1, goodbye, ping, pong, slot
     }
+
+    /// Bytes in a state without motion, after the type byte.
+    static let stateLength = 16
+    /// Bytes the optional motion block adds: six 32-bit floats.
+    static let motionLength = 24
 
     /// Whether `sequence` was sent after `other`, allowing for wrap-around. UDP can reorder
     /// datagrams, so the Mac drops states older than the last one it applied. This also
@@ -145,6 +151,11 @@ public enum SessionMessage: Equatable, Sendable {
             data.appendBigEndian(state.rightStick.y)
             data.append(state.leftTrigger)
             data.append(state.rightTrigger)
+            if let motion = state.motion {
+                for value in [motion.acceleration, motion.rotationRate].flatMap({ [$0.x, $0.y, $0.z] }) {
+                    data.appendBigEndian(value.bitPattern)
+                }
+            }
         case .goodbye:
             data.append(MessageType.goodbye.rawValue)
         case .ping(let token):
@@ -172,14 +183,24 @@ public enum SessionMessage: Equatable, Sendable {
 
         switch type {
         case .state:
-            try requireLength(16)
-            self = .state(sequence: reader.read(UInt32.self), ControllerState(
+            // The motion block is optional, so phones without tilt send the same 16 bytes as before.
+            let hasMotion = bytes.count == 1 + Self.stateLength + Self.motionLength
+            guard hasMotion || bytes.count == 1 + Self.stateLength else { throw .wrongLength }
+            let sequence = reader.read(UInt32.self)
+            var state = ControllerState(
                 buttons: .init(rawValue: reader.read(UInt16.self)),
                 leftStick: .init(x: reader.read(Int16.self), y: reader.read(Int16.self)),
                 rightStick: .init(x: reader.read(Int16.self), y: reader.read(Int16.self)),
                 leftTrigger: reader.read(UInt8.self),
                 rightTrigger: reader.read(UInt8.self)
-            ))
+            )
+            if hasMotion {
+                func vector() -> ControllerState.Motion.Vector {
+                    .init(x: reader.readFloat(), y: reader.readFloat(), z: reader.readFloat())
+                }
+                state.motion = .init(acceleration: vector(), rotationRate: vector())
+            }
+            self = .state(sequence: sequence, state)
         case .goodbye:
             try requireLength(0)
             self = .goodbye
@@ -206,6 +227,10 @@ private struct BigEndianReader {
         let value = bytes[offset..<offset + size].reduce(T.zero) { ($0 << 8) | T(truncatingIfNeeded: $1) }
         offset += size
         return value
+    }
+
+    mutating func readFloat() -> Float {
+        Float(bitPattern: read(UInt32.self))
     }
 }
 

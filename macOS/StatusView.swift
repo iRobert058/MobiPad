@@ -57,7 +57,7 @@ struct StatusView: View {
                 Text("Adds MobiPad to Dolphin, with a controller profile for each player.")
                     .foregroundStyle(.secondary)
             case .success(.installed):
-                Text("Done. In Dolphin, open Controllers, set Port 1 to Standard Controller, click Configure, and load the profile “MobiPad Player 1”. Port 2 gets “MobiPad Player 2”, and so on.")
+                Text("Done. In Dolphin, open Controllers, set Port 1 to Standard Controller, click Configure, and load the profile “MobiPad Player 1”. Port 2 gets “MobiPad Player 2”, and so on. For Wii games, set Wii Remote 1 to Emulated Wii Remote instead, and load “MobiPad Wii Remote Player 1” (with tilt) or “MobiPad Classic Player 1”.")
                     .foregroundStyle(.secondary)
             case .success(.dolphinIsRunning):
                 Text("Quit Dolphin first, because it overwrites its settings when it quits. Then click Set Up Dolphin again.")
@@ -138,6 +138,16 @@ private struct PlayerRow: View {
             }
             Spacer()
             if let player {
+                // Wii Remote modes: a level bubble that moves as the player tilts their phone.
+                if let motion = player.state.motion {
+                    Image(systemName: "gyroscope")
+                        .foregroundStyle(.secondary)
+                        .help("Tilt")
+                    StickDot(stick: .init(
+                        normalizedX: Double(motion.acceleration.x),
+                        normalizedY: Double(motion.acceleration.y)
+                    ))
+                }
                 StickDot(stick: player.state.leftStick)
                 Text(pressedButtons(player.state))
                     .font(.caption.monospaced())

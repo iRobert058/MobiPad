@@ -1,3 +1,5 @@
+import Foundation
+
 /// A snapshot of every control on the virtual controller.
 ///
 /// The phone sends complete snapshots rather than individual events, so a lost
@@ -10,19 +12,23 @@ public struct ControllerState: Equatable, Sendable {
     /// 0 = released, 255 = fully pressed.
     public var leftTrigger: UInt8
     public var rightTrigger: UInt8
+    /// The phone's motion sensors, when the player uses tilt (Wii Remote mode). Nil otherwise.
+    public var motion: Motion?
 
     public init(
         buttons: Buttons = [],
         leftStick: Stick = .centered,
         rightStick: Stick = .centered,
         leftTrigger: UInt8 = 0,
-        rightTrigger: UInt8 = 0
+        rightTrigger: UInt8 = 0,
+        motion: Motion? = nil
     ) {
         self.buttons = buttons
         self.leftStick = leftStick
         self.rightStick = rightStick
         self.leftTrigger = leftTrigger
         self.rightTrigger = rightTrigger
+        self.motion = motion
     }
 }
 
@@ -72,6 +78,43 @@ extension ControllerState {
         private static func quantize(_ value: Double) -> Int16 {
             guard value.isFinite else { return 0 }
             return Int16((value.clamped(to: -1...1) * Double(Int16.max)).rounded())
+        }
+    }
+}
+
+extension ControllerState {
+    /// What the motion sensors measure, in the frame of the controller screen as the player sees it:
+    /// x points to the right edge of the screen, y to the top edge, and z out of the screen.
+    public struct Motion: Equatable, Sendable {
+        /// What an accelerometer measures, in g, so +1 on z when lying face up at rest.
+        public var acceleration: Vector
+        /// Degrees per second around each axis, by the right-hand rule.
+        public var rotationRate: Vector
+
+        public init(acceleration: Vector, rotationRate: Vector) {
+            self.acceleration = acceleration
+            self.rotationRate = rotationRate
+        }
+
+        /// How far the controller is turned like a steering wheel, in radians, clockwise as the player
+        /// sees it. Nil while it lies nearly flat, where the angle would only be noise.
+        public var steeringAngle: Double? {
+            guard hypot(acceleration.x, acceleration.y) > 0.35 else { return nil }
+            return Double(atan2(-acceleration.x, acceleration.y))
+        }
+
+        public struct Vector: Equatable, Sendable {
+            public static let zero = Vector(x: 0, y: 0, z: 0)
+
+            public var x: Float
+            public var y: Float
+            public var z: Float
+
+            public init(x: Float, y: Float, z: Float) {
+                self.x = x
+                self.y = y
+                self.z = z
+            }
         }
     }
 }

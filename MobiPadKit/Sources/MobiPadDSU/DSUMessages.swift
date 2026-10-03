@@ -95,7 +95,7 @@ extension DSU {
         message(.portInfo, payload: slotInfo(slot: slot, isConnected: isConnected) + [0], serverID: serverID)
     }
 
-    /// Motion is sent as zero until the phone sends motion data.
+    /// Motion is zero while the phone doesn't send any (the Classic Controller layout).
     static func padData(
         slot: Int,
         state: ControllerState,
@@ -124,8 +124,8 @@ extension DSU {
         payload.append(state.leftTrigger)
         payload += [UInt8](repeating: 0, count: 12) // two inactive touches
         payload.appendLittleEndian(timestampMicroseconds)
-        for _ in 0..<6 { // accelerometer x, y, z (g); gyro pitch, yaw, roll (deg/s)
-            payload.appendLittleEndian(Float(0).bitPattern)
+        for value in motionFields(state.motion) {
+            payload.appendLittleEndian(value.bitPattern)
         }
         return message(.padData, payload: payload, serverID: serverID)
     }
@@ -156,6 +156,23 @@ extension DSU {
         .x, .a, .b, .y, // Square, Cross, Circle, Triangle
         .rightShoulder, .leftShoulder,
     ]
+
+    /// The DSU motion fields in packet order: accelerometer x, y, z (g), then gyro pitch, yaw, roll (°/s).
+    ///
+    /// Dolphin reads accelerometer x as left, -y as up and z as forward, and gyro pitch as nose up,
+    /// yaw as nose right and roll as right side down (DualShockUDPClient.cpp). `Motion` uses
+    /// x = right, y = forward (the top edge of the screen), z = up (out of the screen).
+    static func motionFields(_ motion: ControllerState.Motion?) -> [Float] {
+        guard let motion else { return [0, 0, 0, 0, 0, 0] }
+        let acceleration = motion.acceleration
+        let rotation = motion.rotationRate
+        return [
+            -acceleration.x, -acceleration.z, acceleration.y,
+            // Turning around x lifts the top edge; around z, counterclockwise turns it left;
+            // around y, the right edge goes down.
+            rotation.x, -rotation.z, rotation.y,
+        ]
+    }
 
     /// Maps -32767...32767 to 1...255 with 128 as center. Positive y is up in both.
     static func stickByte(_ value: Int16) -> UInt8 {

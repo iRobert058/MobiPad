@@ -4,7 +4,7 @@ import SwiftUI
 import UIKit
 #endif
 
-/// The landscape controller (FR-03, UX-02). Each control is its own view with its own gesture, so
+/// The controller screen (FR-03, UX-02): landscape, or upright for the pointing Wii Remote. Each control is its own view with its own gesture, so
 /// SwiftUI tracks their touches independently and they can be used at the same time (FR-04).
 ///
 /// The controls go where the player's layout puts them. In edit mode they can be moved, resized and
@@ -25,7 +25,18 @@ struct ControllerView: View {
     /// Dragged controls snap to steps of this fraction of the screen, so they line up.
     private static let gridStep: CGFloat = 0.02
 
+    /// The phone's motion sensors, read only in the Wii Remote layout.
+    @State private var tilt = TiltSensor()
+
     private var layout: ControllerLayout { draft ?? model.layout }
+
+    /// Motion is part of the Wii Remotes, and pauses while the layout is being edited.
+    private var usesTilt: Bool { model.controllerKind.usesMotion && draft == nil }
+
+    /// The controls of the controller the phone acts as.
+    private var controls: [Control] {
+        Control.allCases.filter { $0.kind == model.controllerKind }
+    }
 
     var body: some View {
         GeometryReader { proxy in
@@ -38,7 +49,7 @@ struct ControllerView: View {
                         .onTapGesture { selected = nil }
                         .gesture(pinchGesture(selected))
                 }
-                ForEach(Control.allCases.filter { layout[$0].isShown }) { control in
+                ForEach(controls.filter { layout[$0].isShown }) { control in
                     placed(control, in: area)
                 }
             }
@@ -50,6 +61,19 @@ struct ControllerView: View {
         .onChange(of: state) { _, newState in
             if draft == nil { model.send(newState) }
         }
+        .onChange(of: model.controllerKind) {
+            // The other controller has other buttons, so release everything.
+            selected = nil
+            state = ControllerState()
+        }
+        .onChange(of: usesTilt, initial: true) { _, usesTilt in
+            if usesTilt {
+                tilt.start { [model] motion in model.send(motion: motion) }
+            } else {
+                tilt.stop()
+            }
+        }
+        .onDisappear { tilt.stop() }
         // FR-05: a light tap whenever a button goes down.
         .sensoryFeedback(.impact(weight: .light), trigger: state.buttons) { old, new in
             !new.subtracting(old).isEmpty
@@ -70,9 +94,24 @@ struct ControllerView: View {
 
     private var statusPanel: some View {
         VStack(spacing: 8) {
-            Text(model.statusText)
-                .foregroundStyle(.secondary)
+            HStack(spacing: 6) {
+                if model.controllerKind == .wiiRemote {
+                    TiltIndicator(tilt: tilt)
+                }
+                Text(model.statusText)
+            }
+            .foregroundStyle(.secondary)
             HStack(spacing: 20) {
+                Menu(model.controllerKind.name) {
+                    Picker("Controller", selection: Binding(
+                        get: { model.controllerKind },
+                        set: { model.controllerKind = $0 }
+                    )) {
+                        ForEach(ControllerKind.allCases) { kind in
+                            Text(kind.name)
+                        }
+                    }
+                }
                 Button("Edit Layout") { startEditing() }
                 Button("Disconnect", role: .destructive) { model.disconnect() }
             }
@@ -84,12 +123,12 @@ struct ControllerView: View {
         VStack(spacing: 6) {
             HStack(spacing: 16) {
                 Menu("Show/Hide") {
-                    ForEach(Control.allCases) { control in
+                    ForEach(controls) { control in
                         Toggle(control.name, isOn: isShown(control))
                     }
                 }
                 Button("Reset") {
-                    withAnimation { draft = .standard }
+                    withAnimation { draft?.reset(model.controllerKind) }
                     selected = nil
                 }
                 Button("Cancel") { stopEditing(saving: false) }
@@ -271,6 +310,42 @@ struct ControllerView: View {
         case .home: button("Home", .home, size: size)
         case .leftStickPress: button("L3", .leftStickPress, size: size)
         case .rightStickPress: button("R3", .rightStickPress, size: size)
+        // The Wii Remote's buttons go out as the state buttons the Wii Remote profile in Dolphin expects.
+        case .wiiDpad:
+            // Held sideways, the remote's up points left: its IR end is at the left edge. The same
+            // turn as Dolphin's "Sideways Wii Remote" option.
+            cross(
+                scale: scale,
+                top: button("▲", .dpadRight, size: size),
+                left: button("◀", .dpadUp, size: size),
+                right: button("▶", .dpadDown, size: size),
+                bottom: button("▼", .dpadLeft, size: size)
+            )
+        case .wiiA: button("A", .a, size: size)
+        case .wiiB: button("B", .b, size: size)
+        case .wiiOne: button("1", .x, size: size)
+        case .wiiTwo: button("2", .y, size: size)
+        case .wiiMinus: button("−", .view, size: size)
+        case .wiiHome: button("Home", .home, size: size)
+        case .wiiPlus: button("+", .menu, size: size)
+        // Recenters Dolphin's pointer on where the phone points (IMUIR/Recenter in the profile).
+        case .wiiRecenter, .pointRecenter: button("Center", .rightStickPress, size: size)
+        // Held upright, the remote's up is the top of the phone, so its D-pad isn't turned.
+        case .pointDpad:
+            cross(
+                scale: scale,
+                top: button("▲", .dpadUp, size: size),
+                left: button("◀", .dpadLeft, size: size),
+                right: button("▶", .dpadRight, size: size),
+                bottom: button("▼", .dpadDown, size: size)
+            )
+        case .pointA: button("A", .a, size: size)
+        case .pointB: button("B", .b, size: size)
+        case .pointOne: button("1", .x, size: size)
+        case .pointTwo: button("2", .y, size: size)
+        case .pointMinus: button("−", .view, size: size)
+        case .pointHome: button("Home", .home, size: size)
+        case .pointPlus: button("+", .menu, size: size)
         }
     }
 
@@ -321,10 +396,12 @@ private extension ControllerLayout.Control {
         let size: CGSize = switch self {
         case .leftStick, .rightStick:
             CGSize(width: Metrics.stickRadius * 2, height: Metrics.stickRadius * 2)
-        case .dpad, .faceButtons:
+        case .dpad, .faceButtons, .wiiDpad, .pointDpad:
             CGSize(width: Metrics.button * 3, height: Metrics.button * 3 + Metrics.crossSpacing * 2)
         case .leftTrigger, .leftShoulder, .rightShoulder, .rightTrigger,
-             .view, .menu, .home, .leftStickPress, .rightStickPress:
+             .view, .menu, .home, .leftStickPress, .rightStickPress,
+             .wiiA, .wiiB, .wiiOne, .wiiTwo, .wiiMinus, .wiiHome, .wiiPlus, .wiiRecenter,
+             .pointA, .pointB, .pointOne, .pointTwo, .pointMinus, .pointHome, .pointPlus, .pointRecenter:
             CGSize(width: Metrics.button, height: Metrics.button)
         }
         return CGSize(width: size.width * scale, height: size.height * scale)
@@ -334,7 +411,8 @@ private extension ControllerLayout.Control {
 /// A button that stays pressed for as long as a finger is on it, and at least `minimumPress`.
 ///
 /// iOS can hold back a lone touch and then deliver its start and end at the same moment (seen on the
-/// right half of an iPhone 16 Pro in landscape), so a quick tap would otherwise never show up as pressed. `@GestureState` resets on its own when the system
+/// right half of an iPhone 16 Pro in landscape), so a quick tap would otherwise never show up as
+/// pressed, or only for an instant. `@GestureState` resets on its own when the system
 /// cancels the touch (for example, when a notification comes in), so no button gets stuck.
 private struct PressableButton: View {
     let label: String
@@ -344,8 +422,9 @@ private struct PressableButton: View {
     @State private var pressedAt: ContinuousClock.Instant?
     @State private var pendingRelease: Task<Void, Never>?
 
-    /// Long enough for an emulator polling at 60 Hz to see a tap.
-    private static let minimumPress: Duration = .milliseconds(50)
+    /// Long enough for games to take a tap. The Wii Menu in Dolphin ignored every 50 ms tap in a live
+    /// test, and took the ones that lasted 90 ms or more.
+    private static let minimumPress: Duration = .milliseconds(120)
 
     var body: some View {
         Text(label)
@@ -359,7 +438,11 @@ private struct PressableButton: View {
                 DragGesture(minimumDistance: 0)
                     .updating($isTouched) { _, touched, _ in touched = true }
                     .onChanged { _ in press() }
-                    .onEnded { _ in release() }
+                    // A held-back tap can end without ever reporting a change, so it counts as a press here.
+                    .onEnded { _ in
+                        press()
+                        release()
+                    }
             )
             // A cancelled touch doesn't call onEnded.
             .onChange(of: isTouched) { _, touched in
@@ -423,5 +506,20 @@ private struct ThumbStick: View {
         let y = touch.y - radius
         let scale = min(1, radius / max(hypot(x, y), 1))
         return CGSize(width: x * scale, height: y * scale)
+    }
+}
+
+/// A steering wheel that turns as the phone is tilted, so the player can see tilt is working.
+private struct TiltIndicator: View {
+    let tilt: TiltSensor
+
+    var body: some View {
+        if !tilt.isAvailable {
+            Text("No tilt on this device")
+        } else {
+            Image(systemName: "steeringwheel")
+                .rotationEffect(.radians(tilt.motion?.steeringAngle ?? 0))
+                .accessibilityLabel("Tilt")
+        }
     }
 }

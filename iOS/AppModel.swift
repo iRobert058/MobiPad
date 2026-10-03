@@ -20,6 +20,11 @@ final class AppModel {
         didSet { UserDefaults.standard.set(appearance.rawValue, forKey: Self.appearanceKey) }
     }
 
+    /// Which controller the phone acts as: the Classic Controller layout, or a Wii Remote with tilt.
+    var controllerKind: ControllerKind {
+        didSet { UserDefaults.standard.set(controllerKind.rawValue, forKey: Self.controllerKindKey) }
+    }
+
     /// Where the controls sit on the controller screen (UX-03).
     var layout: ControllerLayout {
         didSet { UserDefaults.standard.set(try? JSONEncoder().encode(layout), forKey: Self.layoutKey) }
@@ -27,19 +32,33 @@ final class AppModel {
 
     private var browser: MacBrowser?
     private var link: ControllerLink?
+    /// The buttons and sticks last sent, so tilt can be sent along with them.
+    @ObservationIgnored private var lastState = ControllerState()
+    /// The phone's tilt in the Wii Remote layout. Nil otherwise.
+    @ObservationIgnored private var motion: ControllerState.Motion?
     /// Ignores status updates from a link that has since been replaced.
     private var linkToken = UUID()
 
     private static let playerNameKey = "playerName"
     private static let layoutKey = "controllerLayout"
     private static let appearanceKey = "appearance"
+    private static let controllerKindKey = "controllerKind"
+    private static let uprightPointingKey = "pointingLayoutIsUpright"
     private static let identityKey = "identityKey"
 
     init() {
         playerName = UserDefaults.standard.string(forKey: Self.playerNameKey) ?? ""
         appearance = UserDefaults.standard.string(forKey: Self.appearanceKey).flatMap(Appearance.init) ?? .system
-        layout = UserDefaults.standard.data(forKey: Self.layoutKey)
+        controllerKind = UserDefaults.standard.string(forKey: Self.controllerKindKey).flatMap(ControllerKind.init) ?? .classic
+        var layout = UserDefaults.standard.data(forKey: Self.layoutKey)
             .flatMap { try? JSONDecoder().decode(ControllerLayout.self, from: $0) } ?? .standard
+        // The pointing Wii Remote used to be held in landscape. Its old placements don't fit upright.
+        if !UserDefaults.standard.bool(forKey: Self.uprightPointingKey) {
+            layout.reset(.wiiPointer)
+            UserDefaults.standard.set(try? JSONEncoder().encode(layout), forKey: Self.layoutKey)
+            UserDefaults.standard.set(true, forKey: Self.uprightPointingKey)
+        }
+        self.layout = layout
     }
 
     var statusText: String {
@@ -79,6 +98,8 @@ final class AppModel {
         }
         self.link = link
         connectedMac = mac
+        lastState = ControllerState()
+        motion = nil
         link.connect()
     }
 
@@ -88,9 +109,27 @@ final class AppModel {
         linkToken = UUID()
         connectedMac = nil
         status = .disconnected
+        lastState = ControllerState()
+        motion = nil
     }
 
     func send(_ state: ControllerState) {
+        lastState = state
+        sendCurrentState()
+    }
+
+    /// Sends the phone's tilt with the buttons last sent. Nil stops sending motion.
+    func send(motion: ControllerState.Motion?) {
+        self.motion = motion
+        sendCurrentState()
+    }
+
+    private func sendCurrentState() {
+        var state = lastState
+        // Held sideways, the phone's left end is the Wii Remote's IR end. The phone turns the motion
+        // itself rather than Dolphin, so one Dolphin profile works for every way of holding it.
+        // Pointing, the phone is upright like a real remote, and its top already is the IR end.
+        state.motion = controllerKind == .wiiRemote ? motion?.turnedSideways : motion
         link?.send(state)
     }
 
