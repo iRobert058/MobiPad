@@ -138,12 +138,15 @@ private struct PlayerRow: View {
             }
             Spacer()
             if let player {
-                // Wii Remote mode: the wheel turns as the player tilts their phone.
+                // Wii Remote modes: a level bubble that moves as the player tilts their phone.
                 if let motion = player.state.motion {
-                    Image(systemName: "steeringwheel")
-                        .rotationEffect(.radians(motion.steeringAngle ?? 0))
+                    Image(systemName: "gyroscope")
                         .foregroundStyle(.secondary)
                         .help("Tilt")
+                    StickDot(stick: .init(
+                        normalizedX: Double(motion.acceleration.x),
+                        normalizedY: Double(motion.acceleration.y)
+                    ))
                 }
                 StickDot(stick: player.state.leftStick)
                 Text(pressedButtons(player.state))

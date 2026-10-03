@@ -22,11 +22,19 @@ struct DolphinMotion {
         rollRight = float(at: 96)
     }
 
-    /// The emulated Wii Remote's acceleration with Dolphin's "Sideways Wii Remote" option on:
-    /// Dolphin's frame is x = left, y = backward, z = up, rotated a quarter turn around z.
-    var sidewaysWiiRemote: (left: Float, backward: Float, up: Float) {
-        let device = (x: left, y: -forward, z: up)
-        return (left: device.y, backward: -device.x, up: device.z)
+    typealias Vector = (x: Float, y: Float, z: Float)
+
+    /// What the Wii Remote's accelerometer reads, in Dolphin's frame: x = left, y = backward, z = up
+    /// (`IMUAccelerometer::GetState`).
+    var acceleration: Vector { (x: left, y: -forward, z: up) }
+
+    /// What the Wii Remote's gyroscope reads, in the same frame (`IMUGyroscope::GetRawState`:
+    /// x = Pitch Down − Pitch Up, y = Roll Left − Roll Right, z = Yaw Left − Yaw Right).
+    var angularVelocity: Vector { (x: -pitchUp, y: -rollRight, z: -yawRight) }
+
+    /// Dolphin's "Sideways Wii Remote" option: a quarter turn around z (`Wiimote::GetOrientation`).
+    static func dolphinsSidewaysOption(_ vector: Vector) -> Vector {
+        (x: vector.y, y: -vector.x, z: vector.z)
     }
 }
 
@@ -55,19 +63,33 @@ struct DSUMotionTests {
 
     /// Held up like a Wii Wheel, a sideways Wii Remote has its IR end on the left and its face toward
     /// the player, so its left side points at the floor. The phone, held the same way with its top
-    /// edge up, should look exactly like that to Dolphin.
+    /// edge up and its motion turned sideways, should look exactly like that to Dolphin.
     @Test func heldUprightIsASidewaysRemoteWithItsLeftSideDown() throws {
-        let remote = try Self.dolphinMotion(Self.still(0, 1, 0)).sidewaysWiiRemote
-        #expect(remote.left == -1) // the accelerometer reads 1 g toward the remote's right side
-        #expect(remote.backward == 0 && remote.up == 0)
+        let remote = try Self.dolphinMotion(Self.still(0, 1, 0).turnedSideways).acceleration
+        #expect(remote.x == -1) // the accelerometer reads 1 g toward the remote's right side
+        #expect(remote.y == 0 && remote.z == 0)
     }
 
     /// Turning the wheel clockwise lifts the phone's left end, which is the Wii Remote's IR end.
     @Test func steeringClockwiseLiftsTheIREnd() throws {
         let angle = Float.pi / 6
-        let remote = try Self.dolphinMotion(Self.still(-sin(angle), cos(angle), 0)).sidewaysWiiRemote
-        #expect(remote.backward < 0) // the reading leans forward, toward the IR end
-        #expect(abs(remote.backward + sin(angle)) < 0.0001)
+        let remote = try Self.dolphinMotion(Self.still(-sin(angle), cos(angle), 0).turnedSideways).acceleration
+        #expect(remote.y < 0) // the reading leans forward (y is backward), toward the IR end
+        #expect(abs(remote.y + sin(angle)) < 0.0001)
+    }
+
+    /// The phone turns its motion sideways itself, so Dolphin's Sideways option stays off. That has to
+    /// give exactly what the option would have given.
+    @Test(arguments: [
+        Motion(acceleration: .init(x: 0, y: 1, z: 0), rotationRate: .init(x: 30, y: 0, z: 0)),
+        Motion(acceleration: .init(x: -0.5, y: 0.7, z: 0.4), rotationRate: .init(x: -12, y: 45, z: 90)),
+        Motion(acceleration: .init(x: 0.2, y: -0.3, z: 0.9), rotationRate: .init(x: 5, y: -60, z: -15)),
+    ])
+    func turningOnThePhoneMatchesDolphinsSidewaysOption(motion: Motion) throws {
+        let turnedByPhone = try Self.dolphinMotion(motion.turnedSideways)
+        let unturned = try Self.dolphinMotion(motion)
+        #expect(turnedByPhone.acceleration == DolphinMotion.dolphinsSidewaysOption(unturned.acceleration))
+        #expect(turnedByPhone.angularVelocity == DolphinMotion.dolphinsSidewaysOption(unturned.angularVelocity))
     }
 
     @Test func rotationUsesDolphinsDirections() throws {

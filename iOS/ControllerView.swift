@@ -312,12 +312,14 @@ struct ControllerView: View {
         case .rightStickPress: button("R3", .rightStickPress, size: size)
         // The Wii Remote's buttons go out as the state buttons the Wii Remote profile in Dolphin expects.
         case .wiiDpad:
+            // Held sideways, the remote's up points left: its IR end is at the left edge. The same
+            // turn as Dolphin's "Sideways Wii Remote" option.
             cross(
                 scale: scale,
-                top: button("▲", .dpadUp, size: size),
-                left: button("◀", .dpadLeft, size: size),
-                right: button("▶", .dpadRight, size: size),
-                bottom: button("▼", .dpadDown, size: size)
+                top: button("▲", .dpadRight, size: size),
+                left: button("◀", .dpadUp, size: size),
+                right: button("▶", .dpadDown, size: size),
+                bottom: button("▼", .dpadLeft, size: size)
             )
         case .wiiA: button("A", .a, size: size)
         case .wiiB: button("B", .b, size: size)

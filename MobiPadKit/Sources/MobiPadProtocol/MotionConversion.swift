@@ -39,7 +39,22 @@ extension ControllerState.Motion {
     }
 }
 
+extension ControllerState.Motion {
+    /// The same motion as a Wii Remote held sideways feels it, with its IR end at the left edge of the
+    /// screen and its face toward the player.
+    ///
+    /// This is the quarter turn that Dolphin's "Sideways Wii Remote" option applies
+    /// (`Wiimote::GetOrientation`). Doing it on the phone lets one Dolphin profile serve both ways of
+    /// holding the phone, so the player can switch between them mid-game.
+    public var turnedSideways: Self {
+        Self(acceleration: acceleration.quarterTurnClockwise, rotationRate: rotationRate.quarterTurnClockwise)
+    }
+}
+
 private extension ControllerState.Motion.Vector {
+    /// Turned a quarter turn clockwise around z, as seen from the screen: the top edge becomes the right.
+    var quarterTurnClockwise: Self { Self(x: y, y: -x, z: z) }
+
     /// The same vector in landscape axes: x to the right edge of the screen, y to the top edge.
     func landscape(_ landscape: ControllerState.Motion.Landscape) -> Self {
         switch landscape {

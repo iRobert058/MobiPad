@@ -101,15 +101,13 @@ public enum DolphinSetup {
         }
     }
 
-    /// A Wii Remote held sideways, for the phone's Wii Remote layout, with the phone's motion sensors as
-    /// its accelerometer and gyroscope.
+    /// A Wii Remote, for the phone's Wii Remote layouts, with the phone's motion sensors as its
+    /// accelerometer and gyroscope.
     ///
-    /// The phone sends its motion as a landscape controller, like any other DSU motion controller, so
-    /// the IMU groups map one to one, as in Dolphin's own defaults. "Sideways Wiimote" makes Dolphin
-    /// turn both the motion and the D-pad a quarter turn: the phone's left end becomes the remote's IR
-    /// end, and pressing up on the phone's D-pad presses the remote's right. The phone sends its
-    /// Wii Remote buttons as A → Cross, B → Circle, 1 → Square, 2 → Triangle, − → Share, + → Options and
-    /// Home → PS.
+    /// The IMU groups map one to one, as in Dolphin's own defaults. "Sideways Wiimote" stays off: when
+    /// the player holds the phone sideways, the phone turns its motion and D-pad itself, so this one
+    /// profile works for both ways of holding it. The phone sends its Wii Remote buttons as
+    /// A → Cross, B → Circle, 1 → Square, 2 → Triangle, − → Share, + → Options and Home → PS.
     static func wiiRemoteProfile(slot: Int, serverName: String) -> String {
         """
         [Profile]
@@ -137,7 +135,7 @@ public enum DolphinSetup {
         IMUGyroscope/Roll Right = `Gyro Roll Right`
         IMUGyroscope/Yaw Left = `Gyro Yaw Left`
         IMUGyroscope/Yaw Right = `Gyro Yaw Right`
-        Options/Sideways Wiimote = True
+        Options/Sideways Wiimote = False
         Extension = None
 
         """

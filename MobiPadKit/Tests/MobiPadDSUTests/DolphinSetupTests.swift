@@ -151,7 +151,8 @@ struct DolphinSetupTests {
         #expect(Set(settings.keys).isSubset(of: Self.wiimoteKeys))
         #expect(Set(settings.values.compactMap(Self.input)).isSubset(of: Self.dsuInputs))
         #expect(settings.values.compactMap(Self.input).count == 23)
-        #expect(settings["Options/Sideways Wiimote"] == "True")
+        // The phone turns its motion sideways itself, so Dolphin mustn't turn it again.
+        #expect(settings["Options/Sideways Wiimote"] == "False")
         #expect(settings["Extension"] == "None")
     }
 

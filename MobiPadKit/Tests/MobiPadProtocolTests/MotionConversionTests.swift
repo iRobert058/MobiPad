@@ -47,6 +47,14 @@ struct MotionConversionTests {
         Self.expectClose(motion.acceleration, .init(x: 0, y: 0, z: 1.5))
     }
 
+    /// A sideways Wii Remote's IR end is the phone's left edge, so what the phone measures toward its
+    /// left edge is what the remote measures toward its front (y).
+    @Test func turnedSidewaysMakesTheLeftEdgeTheFront() {
+        let motion = Motion(acceleration: .init(x: -1, y: 0.5, z: 0.25), rotationRate: .init(x: 10, y: 20, z: 30))
+        Self.expectClose(motion.turnedSideways.acceleration, .init(x: 0.5, y: 1, z: 0.25))
+        Self.expectClose(motion.turnedSideways.rotationRate, .init(x: 20, y: -10, z: 30))
+    }
+
     @Test func steeringAngleIsClockwiseAndNilWhenFlat() throws {
         let angle = Float.pi / 6
         let turned = Motion(acceleration: .init(x: -sin(angle), y: cos(angle), z: 0), rotationRate: .zero)

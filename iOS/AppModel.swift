@@ -118,7 +118,9 @@ final class AppModel {
 
     private func sendCurrentState() {
         var state = lastState
-        state.motion = motion
+        // Held sideways, the phone's left end is the Wii Remote's IR end. The phone turns the motion
+        // itself rather than Dolphin, so one Dolphin profile works for every way of holding it.
+        state.motion = controllerKind == .wiiRemote ? motion?.turnedSideways : motion
         link?.send(state)
     }
 
