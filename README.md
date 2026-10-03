@@ -2,7 +2,7 @@
 
 Use an iPhone as a wireless game controller for emulators on a Mac. Up to four phones can play at once. See [requirements.md](requirements.md) (in Dutch).
 
-[![MobiPad trailer (20 seconds): the iPhone as a Classic Controller and as a Wii Remote you tilt to steer](docs/trailer-poster.jpg)](docs/trailer.mp4)
+https://github.com/user-attachments/assets/b661fbea-f4f7-4dba-b251-b9e38dd9dfdb
 
 ```
 iPhone ──Wi-Fi (encrypted UDP, Bonjour)──▶ Mac companion app ──▶ DSU on localhost ──▶ Dolphin, Cemu
