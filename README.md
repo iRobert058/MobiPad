@@ -1,6 +1,6 @@
 # MobiPad
 
-Use an iPhone as a wireless game controller for emulators on a Mac. Up to four phones can play at once. See [requirements.md](requirements.md).
+Use an iPhone as a wireless game controller for emulators on a Mac. Up to four phones can play at once. See [requirements.md](requirements.md) (in Dutch).
 
 ```
 iPhone ──Wi-Fi (encrypted UDP, Bonjour)──▶ Mac companion app ──▶ DSU on localhost ──▶ Dolphin, Cemu
@@ -152,25 +152,30 @@ swift test -Xswiftc -F -Xswiftc $FW -Xlinker -F -Xlinker $FW \
 
 ## Status
 
-Done, and tested in the package:
+Tried on real hardware:
+- Both apps build and run from Xcode; the Mac app lives in the menu bar.
+- An iPhone 16 Pro (and the iPhone Simulator) finds the Mac, gets approved, connects and plays.
+- Dolphin reads both sticks and all buttons over DSU, as a GameCube controller.
+- Set Up Dolphin's Wii Remote profile loads in Dolphin, and the pointer follows the phone left and right.
+- Layout editing and dark mode draw correctly in the Simulator.
+
+Covered by the package tests (`swift test`):
 - **Connecting (FR-01, FR-02, CR-01, CR-02):** Bonjour discovery, connecting and disconnecting.
 - **Pairing and encryption (CR-03, NFR-06).**
 - **Streaming input (FR-06, NFR-01):** full snapshots on every change, resent every 50 ms, and old packets dropped.
 - **Up to four players (FR-10)**, each keeping their player number across dropouts.
 - **Automatic reconnect (FR-09)** and **latency (DR-03)**.
-- **DSU for Dolphin and Cemu.**
-- **Keyboard key mapping for Ryujinx.**
+- **DSU for Dolphin and Cemu**, and **keyboard key mapping for Ryujinx**.
 - **Test controller in the Mac menu.**
-- **Set Up Dolphin (UX-01):** the DSU server entry and the GameCube, Wii Remote and Classic Controller profiles. Not yet loaded in Dolphin itself.
-- **Motion (both Wii Remotes):** the motion in the wire format, turning Core Motion readings into the controller's axes, the sideways turn (checked against Dolphin's own Sideways option), the DSU motion fields as Dolphin reads them, and the profiles' key and input names against Dolphin's source. Not yet tried on a device or in Dolphin; see [TILT_NOTES.md](TILT_NOTES.md).
+- **Set Up Dolphin (UX-01):** the DSU server entry and the GameCube, Wii Remote and Classic Controller profiles, with their key and input names checked against Dolphin's source.
+- **Motion (both Wii Remotes):** the motion in the wire format, turning Core Motion readings into the controller's axes, the sideways turn (checked against Dolphin's own Sideways option), and the DSU motion fields as Dolphin reads them.
 
-Checked on this Mac without Xcode:
-- `project.yml` generates a valid Xcode project (app IDs, OS versions, package links).
-- The Mac app's code builds and runs. Started as a plain executable, its DSU server answered a Dolphin-style request (checksums verified with Python's zlib), it advertised itself over Bonjour as "Robert's MacBook Pro", and it wrote its log.
+Not tried yet: Cemu, Ryujinx with keyboard output, four players at once, haptics, moving and resizing controls by touch, latency figures on a real network, and steering in Mario Kart Wii.
 
-Written, but not yet run on a device or in an emulator (the apps haven't been built yet):
-- iPhone layout (FR-03, UX-02), with LB/RB/LT/RT added for Mario Kart
-- multi-touch (FR-04) and haptics (FR-05)
-- layout editing (UX-03): checked in the Simulator that it draws correctly, but moving and resizing by touch haven't been tried
-- dark mode (UX-05): follows the phone, or Light or Dark from the button at the top of the start screen. Checked in the Simulator, including switching back to following the phone
-- the Mac's menu: approval prompt, test screen (FR-08), test controller switch and keyboard output
+Work in progress: the pointer's up and down still needs fixing; see [TILT_NOTES.md](TILT_NOTES.md).
+
+## License
+
+MIT; see [LICENSE](LICENSE).
+
+MobiPad isn't affiliated with or endorsed by Nintendo, Sony, Microsoft, Apple, or the Dolphin, Cemu or Ryujinx projects. Wii, GameCube and Mario Kart are trademarks of Nintendo, PlayStation of Sony, and Xbox of Microsoft. They're named here only to describe what MobiPad works with.
