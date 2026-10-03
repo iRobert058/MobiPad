@@ -83,8 +83,8 @@ extension ControllerState {
 }
 
 extension ControllerState {
-    /// What the motion sensors measure, in the frame of the controller as the player holds it in
-    /// landscape: x points to the right edge of the screen, y to the top edge, and z out of the screen.
+    /// What the motion sensors measure, in the frame of the controller screen as the player sees it:
+    /// x points to the right edge of the screen, y to the top edge, and z out of the screen.
     public struct Motion: Equatable, Sendable {
         /// What an accelerometer measures, in g, so +1 on z when lying face up at rest.
         public var acceleration: Vector

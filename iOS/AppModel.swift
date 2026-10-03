@@ -43,14 +43,22 @@ final class AppModel {
     private static let layoutKey = "controllerLayout"
     private static let appearanceKey = "appearance"
     private static let controllerKindKey = "controllerKind"
+    private static let uprightPointingKey = "pointingLayoutIsUpright"
     private static let identityKey = "identityKey"
 
     init() {
         playerName = UserDefaults.standard.string(forKey: Self.playerNameKey) ?? ""
         appearance = UserDefaults.standard.string(forKey: Self.appearanceKey).flatMap(Appearance.init) ?? .system
         controllerKind = UserDefaults.standard.string(forKey: Self.controllerKindKey).flatMap(ControllerKind.init) ?? .classic
-        layout = UserDefaults.standard.data(forKey: Self.layoutKey)
+        var layout = UserDefaults.standard.data(forKey: Self.layoutKey)
             .flatMap { try? JSONDecoder().decode(ControllerLayout.self, from: $0) } ?? .standard
+        // The pointing Wii Remote used to be held in landscape. Its old placements don't fit upright.
+        if !UserDefaults.standard.bool(forKey: Self.uprightPointingKey) {
+            layout.reset(.wiiPointer)
+            UserDefaults.standard.set(try? JSONEncoder().encode(layout), forKey: Self.layoutKey)
+            UserDefaults.standard.set(true, forKey: Self.uprightPointingKey)
+        }
+        self.layout = layout
     }
 
     var statusText: String {
@@ -120,6 +128,7 @@ final class AppModel {
         var state = lastState
         // Held sideways, the phone's left end is the Wii Remote's IR end. The phone turns the motion
         // itself rather than Dolphin, so one Dolphin profile works for every way of holding it.
+        // Pointing, the phone is upright like a real remote, and its top already is the IR end.
         state.motion = controllerKind == .wiiRemote ? motion?.turnedSideways : motion
         link?.send(state)
     }

@@ -4,7 +4,7 @@ import SwiftUI
 import UIKit
 #endif
 
-/// The landscape controller (FR-03, UX-02). Each control is its own view with its own gesture, so
+/// The controller screen (FR-03, UX-02): landscape, or upright for the pointing Wii Remote. Each control is its own view with its own gesture, so
 /// SwiftUI tracks their touches independently and they can be used at the same time (FR-04).
 ///
 /// The controls go where the player's layout puts them. In edit mode they can be moved, resized and
@@ -330,7 +330,7 @@ struct ControllerView: View {
         case .wiiPlus: button("+", .menu, size: size)
         // Recenters Dolphin's pointer on where the phone points (IMUIR/Recenter in the profile).
         case .wiiRecenter, .pointRecenter: button("Center", .rightStickPress, size: size)
-        // Pointed at the TV, the remote's up is the phone's top edge, so its D-pad isn't turned.
+        // Held upright, the remote's up is the top of the phone, so its D-pad isn't turned.
         case .pointDpad:
             cross(
                 scale: scale,
@@ -411,7 +411,8 @@ private extension ControllerLayout.Control {
 /// A button that stays pressed for as long as a finger is on it, and at least `minimumPress`.
 ///
 /// iOS can hold back a lone touch and then deliver its start and end at the same moment (seen on the
-/// right half of an iPhone 16 Pro in landscape), so a quick tap would otherwise never show up as pressed. `@GestureState` resets on its own when the system
+/// right half of an iPhone 16 Pro in landscape), so a quick tap would otherwise never show up as
+/// pressed, or only for an instant. `@GestureState` resets on its own when the system
 /// cancels the touch (for example, when a notification comes in), so no button gets stuck.
 private struct PressableButton: View {
     let label: String
@@ -421,8 +422,9 @@ private struct PressableButton: View {
     @State private var pressedAt: ContinuousClock.Instant?
     @State private var pendingRelease: Task<Void, Never>?
 
-    /// Long enough for an emulator polling at 60 Hz to see a tap.
-    private static let minimumPress: Duration = .milliseconds(50)
+    /// Long enough for games to take a tap. The Wii Menu in Dolphin ignored every 50 ms tap in a live
+    /// test, and took the ones that lasted 90 ms or more.
+    private static let minimumPress: Duration = .milliseconds(120)
 
     var body: some View {
         Text(label)

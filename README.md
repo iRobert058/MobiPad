@@ -48,7 +48,7 @@ Choose the controller on the start screen, or with the menu next to **Edit Layou
 
 - **Classic Controller:** two sticks, A/B/X/Y, shoulder buttons and triggers. Works with every emulator, as before.
 - **Wii Remote (sideways):** held like a steering wheel or an NES pad, screen toward you. Tilting the phone steers, as in Mario Kart Wii. The steering wheel next to the player name turns as you tilt, so you can see tilt is working.
-- **Wii Remote (pointing):** for pointer games like Wii Party and the Wii Menu. Hold the phone flat in both hands, screen up, with its top edge toward the TV, and aim with it. A is big under your right thumb and B under your left. Aim at the middle of the TV and tap **Center** to recenter the pointer whenever it drifts.
+- **Wii Remote (pointing):** for pointer games like Wii Party and the Wii Menu. The screen turns upright: hold the phone in one hand like a Wii Remote, screen up, with its top toward the TV, and aim with it. The buttons run top to bottom as on the remote, with A big under your thumb and B below it. Aim at the middle of the TV and tap **Center** to recenter the pointer whenever it drifts.
 
 Both Wii Remotes are for Wii games in Dolphin (see below), and you can switch between them mid-game, for example between Wii Party's minigames. They need the Mac app from the same version: an older Mac app ignores the phone while it sends motion.
 

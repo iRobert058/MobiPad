@@ -4,10 +4,19 @@ Branch: `tilt-controls`, made from `main` on 2026-10-03. Nothing is pushed or me
 
 ## Progress
 
-- **Done:** the original eight steps; the pointer work; after the live tests: Dolphin's gyroscope calibration off, Point's Accelerometer Influence off, and buttons that always count a completed tap.
+- **Done:** the original eight steps; the pointer work; after the live tests: Dolphin's gyroscope calibration off, Point's Accelerometer Influence off, buttons that always count a completed tap, the pointing Wii Remote held upright like a real remote, and taps held for at least 120 ms.
 - **Working on:** nothing. Waiting for the next live test.
-- **Next step:** check up and down and the A button in Wii Party (see "Second live test" below). If both are good, check Mario Kart steering and merge into `main`.
+- **Next step:** check the upright pointing remote and quick A taps in the Wii Menu (see "Third live test" below). If both are good, check Mario Kart steering and merge into `main`.
 - **Half-finished or broken:** nothing known.
+
+## Third live test (2026-10-03)
+
+Measured with a small script on the Mac that subscribes to MobiPad's DSU server the way Dolphin does, and logs every A press and the motion it carries.
+
+- **Dolphin had kept the old settings.** The profile on disk was written by an older Mac build, and Dolphin's active Wii Remote settings had neither fix. After Set Up Dolphin and loading the profile again, both were active.
+- **Up and down: the phone was held like a TV remote,** in one hand with its left end toward the TV. Pointing up and down then turns the phone around its own top edge, which Dolphin, told that the top edge points at the TV, reads as twisting the remote; left and right work either way. Held flat in both hands with the top edge toward the TV, up and down worked perfectly. You preferred the remote grip, so the pointing remote now turns the screen upright and is held like a real Wii Remote, top toward the TV. Upright, the phone's own axes already are the remote's, so the motion goes out unturned.
+- **A: every tap reached Dolphin, but the Wii Menu ignored the short ones.** All 44 taps of the first round arrived at the DSU port, 41 of them exactly 50 ms long (the minimum the button held them for; iOS delivered them only when the thumb lifted). Quick taps: none of 5 registered, all 30–60 ms. Half-second holds: all 5 registered, 375–661 ms. Dolphin reads the Wii Remote 200 times a second (`BTEmu.cpp`), so it saw the short ones too; it's the game that wants a longer press. Three earlier presses of 90–121 ms seem to be the three that registered. The minimum press is now 120 ms, about as long as a real quick tap.
+- **Changes:** `ControllerKind.isUpright` and an app delegate that turns the screen (portrait added to the supported orientations in `project.yml`, which the feature needs); `Motion.Orientation` with a `portrait` case (was `Landscape`); a new upright pointing layout, with old landscape placements of the pointing controls reset once; `PressableButton.minimumPress` 50 → 120 ms.
 
 ## Second live test (2026-10-03)
 
@@ -85,7 +94,7 @@ Docs: `README.md` and this file.
    - Buttons: 2 accelerates, 1 brakes, B drifts, the D-pad uses items, + pauses.
    - Shake the phone for tricks and wheelies.
    - Menus: try navigating with the D-pad. Dolphin may also move the pointer with the phone's motion ("Point" under Motion Input); note whether that gets in the way.
-6. **Pointing (Wii Party):** switch the phone to **Wii Remote (pointing)** and hold it flat, screen up, top edge toward the TV. In the Wii Menu or Wii Party:
+6. **Pointing (Wii Party):** switch the phone to **Wii Remote (pointing)**; the screen turns upright. Hold it like a Wii Remote, screen up, top toward the TV. In the Wii Menu or Wii Party:
    - Aim at the middle of the TV and tap **Center**. The pointer should follow the phone smoothly, up/down and left/right in the right directions, and A should select.
    - If it moves too fast or too slow across the screen, try **Total Yaw** under Point in Dolphin (default 25°), and tell me what feels right; I can put it in the profile.
    - Try a motion minigame (a shake or a twist) to check the remote's orientation feels right while pointing.
@@ -98,9 +107,9 @@ Docs: `README.md` and this file.
 ## Decisions
 
 - **The phone turns its motion sideways itself, and Dolphin's "Sideways Wii Remote" option stays off.** At first the profile switched that option on and let Dolphin turn the motion and D-pad. That broke pointer games like Wii Party, where the remote is held upright: Dolphin's option would turn the motion for those too, and changing it means editing the profile. Now the phone does the same quarter turn (`Motion.turnedSideways`, checked in a test against Dolphin's `GetOrientation`) only in the sideways layout, and the sideways D-pad sends the turned directions. One profile serves every hold, and the player can switch holds mid-game.
-- **Pointing uses Dolphin's gyroscope pointer** ("Point" under Motion Input, `IMUIR`, on by default on the Mac). It follows the gyroscope relative to where it started; up and down are anchored by gravity, left and right are limited to Total Yaw (25°). The phone is held flat with its top edge toward the TV, which is how Dolphin aims a controller that isn't turned sideways.
+- **Pointing uses Dolphin's gyroscope pointer** ("Point" under Motion Input, `IMUIR`, on by default on the Mac). It follows the gyroscope relative to where it started; left and right are limited to Total Yaw (25°). The phone is held upright with its top toward the TV, like a real remote, which is how Dolphin aims a controller that isn't turned sideways (see "Third live test").
 - **Center sends R3**, which neither Wii Remote layout uses otherwise, and the profile maps it to `IMUIR/Recenter`.
-- **Wii Remote (pointing) layout:** A big under the right thumb, B big under the left (the two buttons pointer games use most), the D-pad above B, 1 and 2 small at the bottom right, and −, Home, + and Center in the middle.
+- **Wii Remote (pointing) layout, upright:** top to bottom as on the remote: the D-pad, A big under the thumb, B below it (the trigger behind A on the remote), −, Home, +, then 1 and 2. Center sits next to B, in reach of the thumb.
 - **Motion at 100 Hz** instead of 60, for a smoother pointer. That's 100 small packets a second per phone in the Wii Remote modes; Classic Controller is unchanged.
 - **The Mac menu shows a tilt dot instead of a turning wheel,** because the motion it receives is turned sideways in one mode and not in the other; a level bubble reads right either way. The phone's own steering wheel works from its unturned readings.
 - **Frame of `Motion`:** x points to the right edge of the screen as the player holds it, y to the top edge, z out of the screen. Acceleration is what an accelerometer measures (+1 g on z when lying face up); rotation follows the right-hand rule, in °/s.

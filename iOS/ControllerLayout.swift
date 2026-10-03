@@ -6,8 +6,8 @@ enum ControllerKind: String, CaseIterable, Identifiable {
     case classic
     /// A Wii Remote held sideways, steered by tilting the phone (Mario Kart). For Dolphin.
     case wiiRemote
-    /// A Wii Remote pointed at the TV: the phone lies flat in the hands, top edge toward the TV, and
-    /// aims Dolphin's pointer (Wii Party, the Wii Menu). For Dolphin.
+    /// A Wii Remote pointed at the TV: the screen turns upright and the phone is held in one hand like a
+    /// real remote, its top toward the TV, to aim Dolphin's pointer (Wii Party, the Wii Menu). For Dolphin.
     case wiiPointer
 
     var id: Self { self }
@@ -22,6 +22,9 @@ enum ControllerKind: String, CaseIterable, Identifiable {
 
     /// The Wii Remotes send the phone's motion.
     var usesMotion: Bool { self != .classic }
+
+    /// The pointing Wii Remote is held upright. The others are held in landscape.
+    var isUpright: Bool { self == .wiiPointer }
 }
 
 /// Where each control sits on the controller screen, how big it is, and whether it's shown (UX-03).
@@ -59,7 +62,7 @@ extension ControllerLayout {
         case view, menu, home, leftStickPress, rightStickPress
         // The Wii Remote layout, held sideways like an NES pad.
         case wiiDpad, wiiA, wiiB, wiiOne, wiiTwo, wiiMinus, wiiHome, wiiPlus, wiiRecenter
-        // The Wii Remote pointed at the TV.
+        // The Wii Remote pointed at the TV, held upright.
         case pointDpad, pointA, pointB, pointOne, pointTwo, pointMinus, pointHome, pointPlus, pointRecenter
 
         var id: Self { self }
@@ -139,17 +142,18 @@ extension ControllerLayout {
             case .wiiOne: Placement(center: CGPoint(x: 0.74, y: 0.56), scale: 1.5)
             case .wiiTwo: Placement(center: CGPoint(x: 0.9, y: 0.56), scale: 1.5)
             case .wiiRecenter: Placement(center: CGPoint(x: 0.5, y: 0.8), scale: 1.2)
-            // Pointing: A big under the right thumb and B under the left, the buttons a pointer game
-            // uses most. The D-pad above B, 1 and 2 small, and −, Home, + in the middle.
-            case .pointA: Placement(center: CGPoint(x: 0.86, y: 0.5), scale: 1.8)
-            case .pointB: Placement(center: CGPoint(x: 0.13, y: 0.66), scale: 1.6)
-            case .pointDpad: Placement(center: CGPoint(x: 0.14, y: 0.27))
-            case .pointMinus: Placement(center: CGPoint(x: 0.42, y: 0.5))
-            case .pointHome: Placement(center: CGPoint(x: 0.5, y: 0.5))
-            case .pointPlus: Placement(center: CGPoint(x: 0.58, y: 0.5))
-            case .pointOne: Placement(center: CGPoint(x: 0.64, y: 0.82))
-            case .pointTwo: Placement(center: CGPoint(x: 0.76, y: 0.82))
-            case .pointRecenter: Placement(center: CGPoint(x: 0.5, y: 0.8), scale: 1.2)
+            // Pointing, upright, top to bottom as on the remote: the D-pad, A big under the thumb and
+            // B below it (on the remote it's the trigger behind A), −, Home, +, then 1 and 2. Center
+            // next to B, in reach of the thumb.
+            case .pointDpad: Placement(center: CGPoint(x: 0.5, y: 0.2))
+            case .pointA: Placement(center: CGPoint(x: 0.5, y: 0.43), scale: 1.8)
+            case .pointB: Placement(center: CGPoint(x: 0.5, y: 0.6), scale: 1.4)
+            case .pointRecenter: Placement(center: CGPoint(x: 0.84, y: 0.6), scale: 1.2)
+            case .pointMinus: Placement(center: CGPoint(x: 0.28, y: 0.74))
+            case .pointHome: Placement(center: CGPoint(x: 0.5, y: 0.74))
+            case .pointPlus: Placement(center: CGPoint(x: 0.72, y: 0.74))
+            case .pointOne: Placement(center: CGPoint(x: 0.5, y: 0.85))
+            case .pointTwo: Placement(center: CGPoint(x: 0.5, y: 0.94))
             }
         }
     }

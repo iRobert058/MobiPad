@@ -92,6 +92,18 @@ struct DSUMotionTests {
         #expect(turnedByPhone.angularVelocity == DolphinMotion.dolphinsSidewaysOption(unturned.angularVelocity))
     }
 
+    /// The pointing Wii Remote is held upright, top toward the TV, like a real remote. Tipping the top
+    /// up has to lift the pointer, and turning it left has to move the pointer left.
+    @Test func pointingUprightAimsWithTheTopOfThePhone() throws {
+        let tippedUp = Motion(gravity: .init(x: 0, y: 0, z: -1), userAcceleration: .zero, rotationRate: .init(x: 1, y: 0, z: 0), orientation: .portrait)
+        #expect(try Self.dolphinMotion(tippedUp).pitchUp > 0)
+        let turnedLeft = Motion(gravity: .init(x: 0, y: 0, z: -1), userAcceleration: .zero, rotationRate: .init(x: 0, y: 0, z: 1), orientation: .portrait)
+        #expect(try Self.dolphinMotion(turnedLeft).yawRight < 0)
+        // Lying flat, the remote reads 1 g up and nothing forward.
+        let flat = try Self.dolphinMotion(tippedUp)
+        #expect(flat.up == 1 && flat.forward == 0)
+    }
+
     @Test func rotationUsesDolphinsDirections() throws {
         let around = { (x: Float, y: Float, z: Float) in
             try Self.dolphinMotion(Motion(acceleration: .zero, rotationRate: .init(x: x, y: y, z: z)))

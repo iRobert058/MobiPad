@@ -56,17 +56,21 @@ final class TiltSensor {
             gravity: gravity,
             userAcceleration: userAcceleration,
             rotationRate: rotationRate,
-            landscape: landscape
+            orientation: orientation
         )
         self.motion = motion
         onUpdate?(motion)
     }
 
     /// Which way round the screen is, which decides where the phone's left and right are.
-    private var landscape: ControllerState.Motion.Landscape {
+    private var orientation: ControllerState.Motion.Orientation {
         let scene = UIApplication.shared.connectedScenes.lazy.compactMap { $0 as? UIWindowScene }.first
+        return switch scene?.effectiveGeometry.interfaceOrientation {
+        case .portrait: .portrait
         // UIKit's landscapeLeft has the top of the phone on the right.
-        return scene?.effectiveGeometry.interfaceOrientation == .landscapeLeft ? .topOnRight : .topOnLeft
+        case .landscapeLeft: .topOnRight
+        default: .topOnLeft
+        }
     }
 }
 

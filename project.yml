@@ -40,9 +40,11 @@ targets:
         CFBundleDisplayName: MobiPad
         UILaunchScreen: {}
         UIRequiresFullScreen: true
+        # Landscape, except the pointing Wii Remote, which turns the screen upright (AppDelegate).
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
+          - UIInterfaceOrientationPortrait
         NSLocalNetworkUsageDescription: MobiPad looks for your Mac on the local network so it can connect as a controller.
         NSBonjourServices:
           - _mobipad._udp # keep in sync with MobiPadService.bonjourType

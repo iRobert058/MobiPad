@@ -8,8 +8,8 @@ struct MotionConversionTests {
     typealias Motion = ControllerState.Motion
     typealias Vector = Motion.Vector
 
-    static func motion(gravity: Vector, user: Vector = .zero, rotation: Vector = .zero, _ landscape: Motion.Landscape) -> Motion {
-        Motion(gravity: gravity, userAcceleration: user, rotationRate: rotation, landscape: landscape)
+    static func motion(gravity: Vector, user: Vector = .zero, rotation: Vector = .zero, _ orientation: Motion.Orientation) -> Motion {
+        Motion(gravity: gravity, userAcceleration: user, rotationRate: rotation, orientation: orientation)
     }
 
     static func expectClose(_ vector: Vector, _ expected: Vector, sourceLocation: SourceLocation = #_sourceLocation) {
@@ -18,9 +18,16 @@ struct MotionConversionTests {
         }
     }
 
-    @Test(arguments: [Motion.Landscape.topOnLeft, .topOnRight])
-    func lyingFaceUpMeasuresOneGOutOfTheScreen(landscape: Motion.Landscape) {
-        Self.expectClose(Self.motion(gravity: .init(x: 0, y: 0, z: -1), landscape).acceleration, .init(x: 0, y: 0, z: 1))
+    @Test(arguments: [Motion.Orientation.portrait, .topOnLeft, .topOnRight])
+    func lyingFaceUpMeasuresOneGOutOfTheScreen(orientation: Motion.Orientation) {
+        Self.expectClose(Self.motion(gravity: .init(x: 0, y: 0, z: -1), orientation).acceleration, .init(x: 0, y: 0, z: 1))
+    }
+
+    /// Upright, the screen's axes are the phone's own, so Core Motion's axes stay as they are.
+    @Test func portraitKeepsThePhonesAxes() {
+        let motion = Self.motion(gravity: .init(x: 0, y: -1, z: 0), rotation: .init(x: 1, y: 0, z: 0), .portrait)
+        Self.expectClose(motion.acceleration, .init(x: 0, y: 1, z: 0))
+        Self.expectClose(motion.rotationRate, .init(x: Float(180 / Double.pi), y: 0, z: 0))
     }
 
     /// Held up in front of the player like a steering wheel: the top edge of the landscape screen
@@ -62,7 +69,7 @@ struct MotionConversionTests {
         #expect(Motion(acceleration: .init(x: 0, y: 0, z: 1), rotationRate: .zero).steeringAngle == nil)
     }
 
-    @Test func rotationIsInDegreesPerSecondInLandscapeAxes() {
+    @Test func rotationIsInDegreesPerSecondInTheScreensAxes() {
         let oneRadian = Float(180 / Double.pi)
         // Spinning in the plane of the screen is the same in portrait and landscape.
         Self.expectClose(
