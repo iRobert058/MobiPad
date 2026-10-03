@@ -149,7 +149,7 @@ De gebruiker kan de verbindingsstatus, verbonden controller en indien beschikbaa
 
 ```text
 ● Verbonden
-Controller: Robert's iPhone
+Controller: Sam's iPhone
 Latency: 8 ms
 ```
 
