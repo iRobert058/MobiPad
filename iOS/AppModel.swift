@@ -129,7 +129,13 @@ final class AppModel {
         // Held sideways, the phone's left end is the Wii Remote's IR end. The phone turns the motion
         // itself rather than Dolphin, so one Dolphin profile works for every way of holding it.
         // Pointing, the phone is upright like a real remote, and its top already is the IR end.
-        state.motion = controllerKind == .wiiRemote ? motion?.turnedSideways : motion
+        // A Joy-Con reports motion in its own axes: held sideways, its top end is the phone's right end;
+        // upright, it's the phone's top.
+        state.motion = switch controllerKind {
+        case .wiiRemote: motion?.turnedSideways
+        case .joyConSideways: motion?.turnedLikeSidewaysJoyCon
+        case .classic, .wiiPointer, .joyConUpright: motion
+        }
         link?.send(state)
     }
 

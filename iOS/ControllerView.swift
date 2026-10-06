@@ -95,7 +95,7 @@ struct ControllerView: View {
     private var statusPanel: some View {
         VStack(spacing: 8) {
             HStack(spacing: 6) {
-                if model.controllerKind == .wiiRemote {
+                if model.controllerKind.isSteered {
                     TiltIndicator(tilt: tilt)
                 }
                 Text(model.statusText)
@@ -346,7 +346,49 @@ struct ControllerView: View {
         case .pointMinus: button("−", .view, size: size)
         case .pointHome: button("Home", .home, size: size)
         case .pointPlus: button("+", .menu, size: size)
+        // A right Joy-Con's buttons go out as the state buttons the Joy-Con profile in Eden expects: its
+        // A, B, X and Y as the phone's own, R and ZR as RB and RT, SL and SR as LB and LT, + as Menu.
+        case .joyStick: ThumbStick(position: sidewaysJoyConStick, radius: Metrics.stickRadius * scale)
+        case .joyButtons:
+            // Held sideways, the Joy-Con is turned a quarter clockwise: its X is on the right, A at the
+            // bottom, B on the left and Y at the top. Each button sends the Joy-Con button that sits there,
+            // and shows the letter games read it as, since they take a sideways Joy-Con's buttons by
+            // position: right is A, bottom B, left Y, top X.
+            cross(
+                scale: scale,
+                top: button("X", .y, size: size),
+                left: button("Y", .b, size: size),
+                right: button("A", .x, size: size),
+                bottom: button("B", .a, size: size)
+            )
+        case .joyUprightStick: ThumbStick(position: $state.rightStick, radius: Metrics.stickRadius * scale)
+        // Upright, every button is where it is on the Joy-Con.
+        case .joyUprightButtons:
+            cross(
+                scale: scale,
+                top: button("X", .x, size: size),
+                left: button("Y", .y, size: size),
+                right: button("A", .a, size: size),
+                bottom: button("B", .b, size: size)
+            )
+        case .joySL, .joyUprightSL: button("SL", .leftShoulder, size: size)
+        case .joySR, .joyUprightSR: trigger("SR", \.leftTrigger, size: size)
+        case .joyPlus, .joyUprightPlus: button("+", .menu, size: size)
+        case .joyHome, .joyUprightHome: button("Home", .home, size: size)
+        case .joyR, .joyUprightR: button("R", .rightShoulder, size: size)
+        case .joyZR, .joyUprightZR: trigger("ZR", \.rightTrigger, size: size)
+        case .joyStickPress, .joyUprightStickPress: button("RS", .rightStickPress, size: size)
         }
+    }
+
+    /// The Joy-Con's stick, held sideways. The Joy-Con is turned a quarter clockwise, so pushing toward the
+    /// top of the screen pushes its stick toward its left edge, the rail. Like a real sideways Joy-Con, it
+    /// sends the Joy-Con's own directions, and the game turns them.
+    private var sidewaysJoyConStick: Binding<ControllerState.Stick> {
+        Binding(
+            get: { .init(x: state.rightStick.y, y: -state.rightStick.x) },
+            set: { onScreen in state.rightStick = .init(x: -onScreen.y, y: onScreen.x) }
+        )
     }
 
     /// Four buttons in a plus shape: the D-pad and A/B/X/Y.
@@ -397,14 +439,17 @@ private enum Metrics {
 private extension ControllerLayout.Control {
     func size(scale: CGFloat) -> CGSize {
         let size: CGSize = switch self {
-        case .leftStick, .rightStick:
+        case .leftStick, .rightStick, .joyStick, .joyUprightStick:
             CGSize(width: Metrics.stickRadius * 2, height: Metrics.stickRadius * 2)
-        case .dpad, .faceButtons, .wiiDpad, .pointDpad:
+        case .dpad, .faceButtons, .wiiDpad, .pointDpad, .joyButtons, .joyUprightButtons:
             CGSize(width: Metrics.button * 3, height: Metrics.button * 3 + Metrics.crossSpacing * 2)
         case .leftTrigger, .leftShoulder, .rightShoulder, .rightTrigger,
              .view, .menu, .home, .leftStickPress, .rightStickPress,
              .wiiA, .wiiB, .wiiOne, .wiiTwo, .wiiMinus, .wiiHome, .wiiPlus, .wiiRecenter,
-             .pointA, .pointB, .pointOne, .pointTwo, .pointMinus, .pointHome, .pointPlus, .pointRecenter:
+             .pointA, .pointB, .pointOne, .pointTwo, .pointMinus, .pointHome, .pointPlus, .pointRecenter,
+             .joySL, .joySR, .joyPlus, .joyHome, .joyR, .joyZR, .joyStickPress,
+             .joyUprightSL, .joyUprightSR, .joyUprightPlus, .joyUprightHome, .joyUprightR, .joyUprightZR,
+             .joyUprightStickPress:
             CGSize(width: Metrics.button, height: Metrics.button)
         }
         return CGSize(width: size.width * scale, height: size.height * scale)

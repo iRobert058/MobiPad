@@ -51,11 +51,27 @@ extension ControllerState.Motion {
     public var turnedSideways: Self {
         Self(acceleration: acceleration.quarterTurnClockwise, rotationRate: rotationRate.quarterTurnClockwise)
     }
+
+    /// The same motion as a right Joy-Con held sideways feels it, with its top end (where + and R are) at
+    /// the right edge of the screen, its rail (SL and SR) at the top, and its face toward the player.
+    ///
+    /// The Switch reports a Joy-Con's motion in the Joy-Con's own axes, whichever way it's held, and the
+    /// game turns it. So the phone turns its motion into those axes: a quarter turn the other way than a
+    /// sideways Wii Remote, whose top end is on the left.
+    public var turnedLikeSidewaysJoyCon: Self {
+        Self(
+            acceleration: acceleration.quarterTurnCounterclockwise,
+            rotationRate: rotationRate.quarterTurnCounterclockwise
+        )
+    }
 }
 
 private extension ControllerState.Motion.Vector {
     /// Turned a quarter turn clockwise around z, as seen from the screen: the top edge becomes the right.
     var quarterTurnClockwise: Self { Self(x: y, y: -x, z: z) }
+
+    /// Turned a quarter turn counterclockwise around z, as seen from the screen: the right edge becomes the top.
+    var quarterTurnCounterclockwise: Self { Self(x: -y, y: x, z: z) }
 
     /// The same vector in the screen's axes: x to the right edge of the screen, y to the top edge.
     func onScreen(_ orientation: ControllerState.Motion.Orientation) -> Self {

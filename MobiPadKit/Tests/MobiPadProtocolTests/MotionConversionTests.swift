@@ -62,6 +62,20 @@ struct MotionConversionTests {
         Self.expectClose(motion.turnedSideways.rotationRate, .init(x: 20, y: -10, z: 30))
     }
 
+    /// A sideways right Joy-Con's top end is the phone's right edge, and its right side faces the bottom.
+    @Test func turnedLikeSidewaysJoyConMakesTheRightEdgeTheTop() {
+        let motion = Motion(acceleration: .init(x: 1, y: 0.5, z: 0.25), rotationRate: .init(x: 10, y: 20, z: 30))
+        Self.expectClose(motion.turnedLikeSidewaysJoyCon.acceleration, .init(x: -0.5, y: 1, z: 0.25))
+        Self.expectClose(motion.turnedLikeSidewaysJoyCon.rotationRate, .init(x: -20, y: 10, z: 30))
+    }
+
+    /// Held like a steering wheel, level, with the phone's top on the left: the phone's portrait left
+    /// edge and the Joy-Con's right side point at the ground, so the Joy-Con measures 1 g toward its left side.
+    @Test func sidewaysJoyConHeldLevelMeasuresOneGTowardItsLeftSide() {
+        let level = Self.motion(gravity: .init(x: -1, y: 0, z: 0), .topOnLeft)
+        Self.expectClose(level.turnedLikeSidewaysJoyCon.acceleration, .init(x: -1, y: 0, z: 0))
+    }
+
     @Test func steeringAngleIsClockwiseAndNilWhenFlat() throws {
         let angle = Float.pi / 6
         let turned = Motion(acceleration: .init(x: -sin(angle), y: cos(angle), z: 0), rotationRate: .zero)
