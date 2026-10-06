@@ -7,6 +7,10 @@ import os
 ///
 /// It only listens on localhost, so controller input never leaves this Mac (NFR-05).
 /// All state lives on `queue`; the public methods hop onto it, so they can be called from anywhere.
+///
+/// An emulator that supports DSU rumble asks how many motors each controller has, then sends rumble
+/// a few times a second; every one goes to `onRumble`. The server keeps no rumble state: when the
+/// emulator stops sending (it quit mid-rumble), the phone stops by itself.
 public final class DSUServer: @unchecked Sendable {
     /// Dolphin re-registers every second; a client that stays silent this long is dropped.
     static let clientTimeout: TimeInterval = 5
@@ -14,6 +18,7 @@ public final class DSUServer: @unchecked Sendable {
     private let log = Logger(subsystem: "MobiPad", category: "dsu")
     private let queue = DispatchQueue(label: "MobiPad.DSUServer")
     private let port: UInt16
+    private let onRumble: @Sendable (_ slot: Int, _ intensity: UInt8) -> Void
     private let serverID = UInt32.random(in: .min ... .max)
     private var listener: NWListener?
     private var slots = [Slot](repeating: Slot(), count: DSU.slotCount)
@@ -31,9 +36,16 @@ public final class DSUServer: @unchecked Sendable {
         var lastSeen = Date()
     }
 
-    /// Pass port 0 to let the system pick a free port (useful in tests).
-    public init(port: UInt16 = DSU.defaultPort) {
+    /// - Parameters:
+    ///   - port: 0 lets the system pick a free port (useful in tests).
+    ///   - onRumble: called on the server's queue for every rumble an emulator sends to a connected
+    ///     controller. Intensity 0 stops it.
+    public init(
+        port: UInt16 = DSU.defaultPort,
+        onRumble: @escaping @Sendable (_ slot: Int, _ intensity: UInt8) -> Void = { _, _ in }
+    ) {
         self.port = port
+        self.onRumble = onRumble
     }
 
     /// Starts listening and returns the port once the server is ready.
@@ -140,6 +152,16 @@ public final class DSUServer: @unchecked Sendable {
             // Answer right away so the emulator doesn't wait for the next input change.
             for slot in requested where slots[slot].state != nil {
                 connection.send(content: padData(slot: slot), completion: .idempotent)
+            }
+        case .motorInfo(let requested):
+            for slot in requested.sorted() {
+                let info = DSU.motorInfo(slot: slot, isConnected: slots[slot].state != nil, serverID: serverID)
+                connection.send(content: info, completion: .idempotent)
+            }
+        case .rumble(let requested, let motor, let intensity):
+            guard motor < DSU.motorCount else { break }
+            for slot in requested.sorted() where slots[slot].state != nil {
+                onRumble(slot, intensity)
             }
         }
         clients[id] = client

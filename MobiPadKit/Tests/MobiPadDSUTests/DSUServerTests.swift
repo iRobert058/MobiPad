@@ -62,6 +62,44 @@ struct DSUServerTests {
         #expect(info.bytes[20] == 0)
         #expect(info.bytes[21] == 0)
     }
+
+    @Test func passesRumbleOnForConnectedControllers() async throws {
+        let rumbles = RumbleLog()
+        let server = DSUServer(port: 0) { slot, intensity in rumbles.append((slot, intensity)) }
+        let port = try await server.start()
+        defer { server.stop() }
+        server.update(slot: 1, state: ControllerState())
+
+        let emulator = UDPClient(port: port)
+        try await emulator.send(ClientRequest.motorInfo(slot: 1))
+        let motors = try ServerMessage(await emulator.receive())
+        #expect(motors.type == 0x11_0001)
+        #expect(motors.bytes[20] == 1)
+        #expect(motors.bytes[31] == 1)
+
+        try await emulator.send(ClientRequest.motorInfo(slot: 2))
+        #expect(try ServerMessage(await emulator.receive()).bytes[31] == 0)
+
+        // Slot 2 has no controller, and there is no second motor.
+        try await emulator.send(ClientRequest.rumble(slot: 2, intensity: 255))
+        try await emulator.send(ClientRequest.rumble(slot: 1, motor: 1, intensity: 255))
+        try await emulator.send(ClientRequest.rumble(slot: 1, intensity: 200))
+        try await emulator.send(ClientRequest.rumble(slot: 1, intensity: 0))
+        try await Task.sleep(for: .milliseconds(200))
+        #expect(rumbles.entries.map(\.slot) == [1, 1])
+        #expect(rumbles.entries.map(\.intensity) == [200, 0])
+    }
+}
+
+private final class RumbleLog: @unchecked Sendable {
+    private let lock = NSLock()
+    private var _entries: [(slot: Int, intensity: UInt8)] = []
+
+    var entries: [(slot: Int, intensity: UInt8)] { lock.withLock { _entries } }
+
+    func append(_ entry: (slot: Int, intensity: UInt8)) {
+        lock.withLock { _entries.append(entry) }
+    }
 }
 
 final class UDPClient: Sendable {

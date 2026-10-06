@@ -70,6 +70,25 @@ struct DSUMessagesTests {
         #expect(try DSU.Request(decoding: ClientRequest.subscribe(flags: 2, mac: DSU.macAddress(slot: 3))) == .subscribe(slots: [3]))
     }
 
+    @Test func parsesRumbleRequests() throws {
+        #expect(try DSU.Request(decoding: ClientRequest.motorInfo(slot: 1)) == .motorInfo(slots: [1]))
+        #expect(try DSU.Request(decoding: ClientRequest.rumble(slot: 2, intensity: 255)) == .rumble(slots: [2], motor: 0, intensity: 255))
+        #expect(try DSU.Request(decoding: ClientRequest.rumble(slot: 0, motor: 1, intensity: 0)) == .rumble(slots: [0], motor: 1, intensity: 0))
+    }
+
+    @Test func motorInfoReportsOneMotorPerConnectedController() throws {
+        let connected = try ServerMessage(DSU.motorInfo(slot: 1, isConnected: true, serverID: 0))
+        #expect(connected.bytes.count == 32)
+        #expect(connected.type == 0x11_0001)
+        #expect(connected.bytes[20] == 1) // slot
+        #expect(connected.bytes[21] == 2) // connected
+        #expect(connected.bytes[31] == 1) // motors
+
+        let empty = try ServerMessage(DSU.motorInfo(slot: 3, isConnected: false, serverID: 0))
+        #expect(empty.bytes[20] == 3)
+        #expect(empty.bytes[31] == 0)
+    }
+
     @Test func rejectsCorruptRequests() {
         var corrupted = ClientRequest.listPorts()
         corrupted[25] ^= 0xFF
@@ -92,6 +111,15 @@ enum ClientRequest {
 
     static func subscribe(slot: UInt8 = 0, flags: UInt8 = 1, mac: [UInt8] = [0, 0, 0, 0, 0, 0]) -> Data {
         DSU.message(.padData, payload: [flags, slot] + mac, serverID: 99, magic: DSU.clientMagic)
+    }
+
+    /// The unofficial rumble messages, by slot, as in the cemuhook-protocol description.
+    static func motorInfo(slot: UInt8) -> Data {
+        DSU.message(.motorInfo, payload: [1, slot, 0, 0, 0, 0, 0, 0], serverID: 99, magic: DSU.clientMagic)
+    }
+
+    static func rumble(slot: UInt8, motor: UInt8 = 0, intensity: UInt8) -> Data {
+        DSU.message(.rumble, payload: [1, slot, 0, 0, 0, 0, 0, 0, motor, intensity], serverID: 99, magic: DSU.clientMagic)
     }
 }
 

@@ -6,6 +6,9 @@ import MobiPadProtocol
 ///
 /// Every message is a 16-byte header, a 4-byte message type and a payload. All multi-byte
 /// fields are little-endian. Message sizes must match exactly: Dolphin drops longer messages.
+///
+/// Rumble goes the other way, from the emulator to the controller, with the protocol's unofficial
+/// motor messages (https://github.com/v1993/cemuhook-protocol). Stock Dolphin doesn't send them yet.
 public enum DSU {
     public static let defaultPort: UInt16 = 26760
     public static let slotCount = 4
@@ -21,7 +24,15 @@ public enum DSU {
         case portInfo = 0x10_0001
         /// Client: subscribe to controller data. Server: controller data.
         case padData = 0x10_0002
+        /// Unofficial: how many rumble motors a controller has. Client: which controllers. Server: one
+        /// reply per controller.
+        case motorInfo = 0x11_0001
+        /// Unofficial: set a motor's rumble. Client only, re-sent a few times a second.
+        case rumble = 0x11_0002
     }
+
+    /// Every controller has one motor, like a Wii Remote: the phone's Taptic Engine.
+    static let motorCount: UInt8 = 1
 
     /// Fake but stable MAC address per slot ("MP" + slot), since some clients subscribe by MAC.
     static func macAddress(slot: Int) -> [UInt8] {
@@ -36,6 +47,9 @@ extension DSU {
         case version
         case listPorts(slots: [Int])
         case subscribe(slots: Set<Int>)
+        case motorInfo(slots: Set<Int>)
+        /// Intensity 0 stops the motor.
+        case rumble(slots: Set<Int>, motor: Int, intensity: UInt8)
 
         struct ParseError: Error {}
 
@@ -62,21 +76,33 @@ extension DSU {
                 self = .listPorts(slots: bytes[24..<24 + count].map(Int.init).filter { $0 < slotCount })
             case .padData:
                 guard length >= 28 else { throw ParseError() }
-                let flags = bytes[20]
-                var slots = Set<Int>()
-                if flags == 0 {
-                    slots = Set(0..<slotCount)
-                }
-                if flags & 0x01 != 0, bytes[21] < slotCount {
-                    slots.insert(Int(bytes[21]))
-                }
-                if flags & 0x02 != 0, let slot = (0..<slotCount).first(where: { macAddress(slot: $0) == Array(bytes[22..<28]) }) {
-                    slots.insert(slot)
-                }
-                self = .subscribe(slots: slots)
+                self = .subscribe(slots: Self.identifiedSlots(bytes))
+            case .motorInfo:
+                guard length >= 28 else { throw ParseError() }
+                self = .motorInfo(slots: Self.identifiedSlots(bytes))
+            case .rumble:
+                guard length >= 30 else { throw ParseError() }
+                self = .rumble(slots: Self.identifiedSlots(bytes), motor: Int(bytes[28]), intensity: bytes[29])
             case nil:
                 throw ParseError()
             }
+        }
+
+        /// The controllers named by the 8 bytes after the message type: flags, slot and MAC address.
+        /// Flags 0 means every slot, bit 0 the slot, bit 1 the MAC address.
+        private static func identifiedSlots(_ bytes: [UInt8]) -> Set<Int> {
+            let flags = bytes[20]
+            var slots = Set<Int>()
+            if flags == 0 {
+                slots = Set(0..<slotCount)
+            }
+            if flags & 0x01 != 0, bytes[21] < slotCount {
+                slots.insert(Int(bytes[21]))
+            }
+            if flags & 0x02 != 0, let slot = (0..<slotCount).first(where: { macAddress(slot: $0) == Array(bytes[22..<28]) }) {
+                slots.insert(slot)
+            }
+            return slots
         }
     }
 }
@@ -93,6 +119,12 @@ extension DSU {
 
     static func portInfo(slot: Int, isConnected: Bool, serverID: UInt32) -> Data {
         message(.portInfo, payload: slotInfo(slot: slot, isConnected: isConnected) + [0], serverID: serverID)
+    }
+
+    /// A controller that isn't connected has no motors.
+    static func motorInfo(slot: Int, isConnected: Bool, serverID: UInt32) -> Data {
+        let payload = slotInfo(slot: slot, isConnected: isConnected) + [isConnected ? motorCount : 0]
+        return message(.motorInfo, payload: payload, serverID: serverID)
     }
 
     /// Motion is zero while the phone doesn't send any (the Classic Controller layout).
