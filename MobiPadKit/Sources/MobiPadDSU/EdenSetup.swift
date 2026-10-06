@@ -3,8 +3,9 @@ import Foundation
 /// Sets Eden (a Switch emulator) up for MobiPad, so players don't have to map every button by hand (UX-01).
 ///
 /// Turns on Eden's DSU client (its "UDP controller") and makes sure it lists the MobiPad server, then
-/// writes a controller profile per player ("MobiPad Player 1" to 4) that players load in Eden's
-/// controller settings. It never changes a player's current mapping.
+/// writes profiles per player that players load in Eden's controller settings: a Pro Controller
+/// ("MobiPad Player 1" to 4) and a single right Joy-Con ("MobiPad Joy-Con Player 1" to 4). It never
+/// changes a player's current mapping.
 ///
 /// Names and formats come from Eden's source: `qt-config.ini` and the profiles in `input/` keep each
 /// value next to a `\default` flag, and Eden ignores the value unless that flag is `false`.
@@ -55,17 +56,37 @@ public enum EdenSetup {
         let profileDirectory = configDirectory.appending(path: "input", directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: profileDirectory, withIntermediateDirectories: true)
         var profileNames: [String] = []
-        for slot in 0..<DSU.slotCount {
-            let name = profileName(slot: slot)
-            try profile(pad: serverIndex * padsPerServer + slot, port: port)
-                .write(to: profileDirectory.appending(path: "\(name).ini"), atomically: true, encoding: .utf8)
-            profileNames.append(name)
+        for kind in ProfileKind.allCases {
+            for slot in 0..<DSU.slotCount {
+                let name = kind.profileName(slot: slot)
+                try kind.profile(pad: serverIndex * padsPerServer + slot, port: port)
+                    .write(to: profileDirectory.appending(path: "\(name).ini"), atomically: true, encoding: .utf8)
+                profileNames.append(name)
+            }
         }
         return .installed(profileNames: profileNames)
     }
 
-    static func profileName(slot: Int) -> String {
-        "MobiPad Player \(slot + 1)"
+    enum ProfileKind: CaseIterable {
+        /// For the phone's Classic Controller layout.
+        case proController
+        /// For the phone's Joy-Con layouts. One profile serves both: the game decides how a single
+        /// Joy-Con is held.
+        case joyCon
+
+        func profileName(slot: Int) -> String {
+            switch self {
+            case .proController: "MobiPad Player \(slot + 1)"
+            case .joyCon: "MobiPad Joy-Con Player \(slot + 1)"
+            }
+        }
+
+        func profile(pad: Int, port: UInt16) -> String {
+            switch self {
+            case .proController: proControllerProfile(pad: pad, port: port)
+            case .joyCon: joyConProfile(pad: pad, port: port)
+            }
+        }
     }
 
     /// Turns on Eden's UDP controller and adds the MobiPad server, unless it's already listed. Returns
@@ -126,21 +147,55 @@ public enum EdenSetup {
         ("button_home", .home), ("button_screenshot", .touchHardPress),
     ]
 
-    /// One player's mapping to the DSU controller `pad`, in the format Eden saves profiles in. The sticks
-    /// are axes 0 and 1 (left) and 2 and 3 (right); the phone's tilt arrives as both Joy-Cons' motion.
-    static func profile(pad: Int, port: UInt16) -> String {
+    /// A Pro Controller mapped to the DSU controller `pad`. The sticks are axes 0 and 1 (left) and 2 and
+    /// 3 (right); the phone's tilt arrives as both Joy-Cons' motion.
+    static func proControllerProfile(pad: Int, port: UInt16) -> String {
+        profile(
+            pad: pad,
+            port: port,
+            mappings: buttons.map { ($0.key, "button:\($0.button.rawValue)") } + [
+                ("lstick", "axis_x:0,axis_y:1"), ("rstick", "axis_x:2,axis_y:3"),
+                ("motionleft", "motion:0"), ("motionright", "motion:0"),
+            ]
+        )
+    }
+
+    /// Eden's controller type for a single right Joy-Con (`Settings::ControllerType::RightJoycon`). A
+    /// profile may set it, unlike the other types.
+    static let rightJoyConType = 3
+
+    /// A right Joy-Con, as the phone's Joy-Con layouts send it: its A, B, X and Y as the phone's own
+    /// (Cross, Circle, Square, Triangle), R and ZR as RB and RT, SL and SR as LB and LT, + as Menu, and
+    /// the stick as the right stick, the Joy-Con's.
+    static let joyConButtons: [(key: String, button: PadButton)] = [
+        ("button_a", .cross), ("button_b", .circle), ("button_x", .square), ("button_y", .triangle),
+        ("button_r", .r1), ("button_zr", .r2), ("button_slright", .l1), ("button_srright", .l2),
+        ("button_plus", .options), ("button_home", .home), ("button_rstick", .r3),
+    ]
+
+    /// A single right Joy-Con mapped to the DSU controller `pad`. It has no left half, so Eden keeps its
+    /// own defaults for those keys.
+    static func joyConProfile(pad: Int, port: UInt16) -> String {
+        profile(
+            pad: pad,
+            port: port,
+            type: rightJoyConType,
+            mappings: joyConButtons.map { ($0.key, "button:\($0.button.rawValue)") } + [
+                ("rstick", "axis_x:2,axis_y:3"), ("motionleft", "motion:0"), ("motionright", "motion:0"),
+            ]
+        )
+    }
+
+    /// A profile in the format Eden saves them in, mapping each key to an input of the DSU controller `pad`.
+    private static func profile(pad: Int, port: UInt16, type: Int? = nil, mappings: [(key: String, parameters: String)]) -> String {
         let device = "engine:cemuhookudp,guid:\(hostGUID),port:\(port),pad:\(pad)"
         var lines = ["[\(section)]"]
-        func add(_ key: String, _ parameters: String) {
+        if let type {
+            lines += ["type\\default=false", "type=\(type)"]
+        }
+        for (key, parameters) in mappings {
             lines += ["\(key)\\default=false", "\(key)=\"\(device),\(parameters)\""]
         }
-        for (key, button) in buttons {
-            add(key, "button:\(button.rawValue)")
-        }
-        add("lstick", "axis_x:0,axis_y:1")
-        add("rstick", "axis_x:2,axis_y:3")
-        add("motionleft", "motion:0")
-        add("motionright", "motion:0")
         return lines.map { $0 + "\n" }.joined()
     }
 }
