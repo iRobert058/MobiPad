@@ -389,6 +389,9 @@ private enum Metrics {
     static let stickRadius: CGFloat = 50
     /// Between the rows of the D-pad and A/B/X/Y.
     static let crossSpacing: CGFloat = 4
+    /// How far a button's touch area reaches past its circle. At most 10, or neighbouring buttons in
+    /// the D-pad and A/B/X/Y would share touches.
+    static let buttonReach: CGFloat = 10
 }
 
 private extension ControllerLayout.Control {
@@ -414,6 +417,10 @@ private extension ControllerLayout.Control {
 /// right half of an iPhone 16 Pro in landscape), so a quick tap would otherwise never show up as
 /// pressed, or only for an instant. `@GestureState` resets on its own when the system
 /// cancels the touch (for example, when a notification comes in), so no button gets stuck.
+///
+/// The touch area is a circle `Metrics.buttonReach` wider than the one drawn, growing with the
+/// button. iOS places a touch at the middle of the finger's contact, so a thumb only partly on the
+/// button (holding 2 to accelerate in Mario Kart) used to land just outside it and press nothing.
 private struct PressableButton: View {
     let label: String
     let size: CGFloat
@@ -434,6 +441,9 @@ private struct PressableButton: View {
             .minimumScaleFactor(0.5)
             .frame(width: size, height: size)
             .background(Circle().fill(isPressed ? Color.accentColor : Color.secondary.opacity(0.3)))
+            // Padding in, then out again, so the touch area grows without moving anything.
+            .padding(reach)
+            .contentShape(Circle())
             .gesture(
                 DragGesture(minimumDistance: 0)
                     .updating($isTouched) { _, touched, _ in touched = true }
@@ -444,11 +454,14 @@ private struct PressableButton: View {
                         release()
                     }
             )
+            .padding(-reach)
             // A cancelled touch doesn't call onEnded.
             .onChange(of: isTouched) { _, touched in
                 if !touched { release() }
             }
     }
+
+    private var reach: CGFloat { Metrics.buttonReach * size / Metrics.button }
 
     private func press() {
         guard pressedAt == nil else { return }
