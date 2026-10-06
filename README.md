@@ -76,7 +76,7 @@ Turn on **Test controller** in the Mac menu. It joins as a player that circles i
 
 ### Dolphin (Mario Kart Wii)
 
-1. In the Mac menu, click **Set Up Dolphin**. It adds MobiPad to Dolphin as a DSU server, if it isn't there yet, and adds three profiles for each player: a GameCube controller, a Wii Remote with tilt, and a Classic Controller. It doesn't change your current controller settings. If the server has to be added while Dolphin is open, it asks you to quit Dolphin first, because Dolphin overwrites its settings when it quits.
+1. In the Mac menu, click **Set Up Dolphin**. It adds MobiPad to Dolphin as a DSU server, if it isn't there yet, and adds three profiles for each player: a GameCube controller, a Wii Remote with tilt, and a Classic Controller, each with rumble (see [Rumble](#rumble)). It doesn't change your current controller settings. If the server has to be added while Dolphin is open, it asks you to quit Dolphin first, because Dolphin overwrites its settings when it quits.
 2. In Dolphin, open **Controllers**, set Port 1 to **Standard Controller**, click **Configure**, pick **MobiPad Player 1** under Profile, and click **Load**. For more players, load MobiPad Player 2 on Port 2, and so on.
 3. For a Wii controller instead, set **Wii Remote 1** to **Emulated Wii Remote**, click **Configure**, and load **MobiPad Wii Remote Player 1** (phone on either Wii Remote) or **MobiPad Classic Player 1** (phone on Classic Controller). Wii Remote 2 gets Player 2, and so on.
 
@@ -98,6 +98,16 @@ The pointer is Dolphin's **Point** under Motion Input, which follows the phone's
 The **Classic Controller** profiles match buttons by name: A, B, X, Y; LB/RB are L/R, LT/RT are ZL/ZR, View is −, Menu is +, and Home, both sticks and the D-pad map directly. No tilt.
 
 **By hand**, for example for a Nunchuk: in Controllers → **Alternate Input Sources**, enable **DSU Client** and add a server: IP `127.0.0.1`, port `26760`. Configure the emulated controller, pick the DSU device, then map each input by clicking it and pressing the matching button on the phone. Dolphin uses PlayStation names: **Cross = A, Circle = B, Square = X, Triangle = Y, L1/R1 = LB/RB, L2/R2 = LT/RT**. DSU device 0 is Player 1, device 1 is Player 2, and so on.
+
+### Rumble
+
+When a game rumbles the controller, the phone buzzes on its Taptic Engine for as long as a Wii Remote's motor would. The rumble travels back the way the input came: from the emulator to the DSU server on the Mac, then to that player's phone, inside the encrypted session.
+
+**Stock Dolphin doesn't send rumble to DSU controllers yet**, so for now the phone stays still. MobiPad uses the DSU protocol's unofficial motor messages ([cemuhook-protocol](https://github.com/v1993/cemuhook-protocol)), and Dolphin's DSU client needs a small change before it sends them. Cemu's DSU code lists rumble as a to-do, and Ryujinx gets key presses, which can't rumble.
+
+Set Up Dolphin maps **Rumble → Motor** in every MobiPad profile. Stock Dolphin ignores it, and a Dolphin that sends DSU rumble needs nothing else. If you set up Dolphin with an older MobiPad, click **Set Up Dolphin** again and load the profile again. To turn rumble off, clear **Motor** under Rumble in Dolphin's controller settings.
+
+The emulator repeats the rumble a few times a second. When the repeats stop for 1.5 seconds (for example, the emulator quit mid-rumble), the phone stops by itself, so it can't keep buzzing. Rumble needs this version of both apps; an older phone ignores it.
 
 ### Cemu
 
@@ -128,14 +138,14 @@ Only turn the keyboard toggle on while playing: Player 1's buttons type into whi
 A phone has to be allowed on the Mac once (CR-03). After that, all input is encrypted and authenticated (NFR-06). Every phone has its own key, and the Mac only accepts input from the phone holding that key, so a device that copies a phone's details still can't send input or take its slot. **Forget** in the menu removes every approved phone.
 
 Not covered:
-- The phone doesn't check that it's talking to the real Mac. A fake Mac on your network could see your button presses, but it can't control anything.
+- The phone doesn't check that it's talking to the real Mac. A fake Mac on your network could see your button presses and make the phone rumble, but it can't control anything else.
 - The approval prompt shows whatever name the phone sends, and any device on your network can ask. Only click Allow when you're expecting a phone.
 - The phone keeps its key in the app's settings, which are included in backups of the phone. Someone with a backup could act as that phone.
 
 ## Debugging
 
 - **Mac menu:** shows each player's name, latency and live sticks and buttons. The test controller (above) separates emulator problems from phone problems.
-- **Log:** phones joining, leaving, timing out and asking for approval, and emulators subscribing, all under subsystem `MobiPad` (categories `host`, `link`, `dsu`). They're saved, so you can read them after the fact. In Console.app, search for `subsystem:MobiPad`. In Terminal:
+- **Log:** phones joining, leaving, timing out and asking for approval, and emulators subscribing, all under subsystem `MobiPad` (categories `host`, `link`, `dsu`, and `rumble` on the phone). They're saved, so you can read them after the fact. In Console.app, search for `subsystem:MobiPad`. In Terminal:
   ```sh
   /usr/bin/log show --last 30m --predicate 'subsystem == "MobiPad"' --style compact
   ```
@@ -154,6 +164,7 @@ The tests include real UDP round-trips on localhost:
 - an impostor with a copied public key
 - a button press travelling all the way to a Dolphin-style DSU client
 - tilt from the phone reaching that client as DSU motion
+- rumble from an emulator reaching the right phone, and stopping when the emulator goes quiet or the phone disconnects
 
 With only the Command Line Tools installed (no Xcode), point `swift test` at Swift Testing:
 
@@ -171,6 +182,7 @@ Tried on real hardware:
 - An iPhone 16 Pro (and the iPhone Simulator) finds the Mac, gets approved, connects and plays.
 - Dolphin reads both sticks and all buttons over DSU, as a GameCube controller.
 - Set Up Dolphin's Wii Remote profile loads in Dolphin. In the Wii Menu the pointer follows the phone in every direction, held upright, and A selects.
+- Mario Kart Wii: steering by tilting the phone sideways works.
 - Layout editing and dark mode draw correctly in the Simulator.
 
 Covered by the package tests (`swift test`):
@@ -183,8 +195,9 @@ Covered by the package tests (`swift test`):
 - **Test controller in the Mac menu.**
 - **Set Up Dolphin (UX-01):** the DSU server entry and the GameCube, Wii Remote and Classic Controller profiles, with their key and input names checked against Dolphin's source.
 - **Motion (both Wii Remotes):** the motion in the wire format, turning Core Motion readings into the controller's axes, the sideways turn (checked against Dolphin's own Sideways option), and the DSU motion fields as Dolphin reads them.
+- **Rumble (FR-05):** the DSU motor messages, passing rumble on to the right phone, stopping by itself, and the Rumble mapping in every Dolphin profile.
 
-Not tried yet: Cemu, Ryujinx with keyboard output, four players at once, haptics, moving and resizing controls by touch, latency figures on a real network, and steering in Mario Kart Wii.
+Not tried yet: Cemu, Ryujinx with keyboard output, four players at once, haptics, rumble (no emulator sends it yet), the wider touch area around buttons (so a thumb partly on 2 still accelerates), moving and resizing controls by touch, and latency figures on a real network.
 
 How the motion controls were built and tested, with the measurements behind the choices: [TILT_NOTES.md](TILT_NOTES.md).
 
