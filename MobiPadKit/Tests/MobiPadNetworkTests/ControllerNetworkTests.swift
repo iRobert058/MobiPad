@@ -152,6 +152,36 @@ struct ControllerNetworkTests {
         try await waitUntil { rig.host.players().first?.latency != nil }
     }
 
+    @Test func rumbleReachesThePhoneAndStopsWhenNoLongerSent() async throws {
+        let rig = try await Rig()
+        let phone = rig.phone()
+        try await phone.waitForStatus(.connected(slot: 0))
+        try await waitUntil { rig.host.players().count == 1 }
+
+        rig.host.rumble(slot: 0, intensity: 255)
+        try await phone.rumbles.wait { $0 == [255] }
+        // A re-send of the same rumble changes nothing.
+        rig.host.rumble(slot: 0, intensity: 255)
+        rig.host.rumble(slot: 0, intensity: 0)
+        try await phone.rumbles.wait { $0 == [255, 0] }
+
+        // The emulator stops re-sending mid-rumble, as when it quits.
+        rig.host.rumble(slot: 0, intensity: 128)
+        try await phone.rumbles.wait { $0 == [255, 0, 128, 0] }
+    }
+
+    @Test func disconnectingStopsRumble() async throws {
+        let rig = try await Rig()
+        let phone = rig.phone()
+        try await phone.waitForStatus(.connected(slot: 0))
+        try await waitUntil { rig.host.players().count == 1 }
+
+        rig.host.rumble(slot: 0, intensity: 255)
+        try await phone.rumbles.wait { $0 == [255] }
+        phone.link.disconnect()
+        try await phone.rumbles.wait { $0 == [255, 0] }
+    }
+
     @Test func silentPhoneLosesItsSlot() async throws {
         let rig = try await Rig()
         // A phone that completes the handshake and then goes quiet, like one that lost Wi-Fi.
@@ -262,12 +292,14 @@ private final class Phone: Sendable {
     let identity: SecureChannel.PrivateKey
     let link: ControllerLink
     let statuses = Recorder<ControllerLink.Status>()
+    let rumbles = Recorder<UInt8>()
 
     init(port: UInt16, identity: SecureChannel.PrivateKey, name: String) {
         self.identity = identity
         var timing = ControllerLink.Timing()
         timing.helloInterval = .milliseconds(50)
         timing.timeout = .seconds(1)
+        timing.rumbleTimeout = .milliseconds(300)
         link = ControllerLink(
             to: .hostPort(host: "127.0.0.1", port: NWEndpoint.Port(rawValue: port)!),
             identity: identity,
@@ -275,6 +307,8 @@ private final class Phone: Sendable {
             timing: timing
         ) { [statuses] status in
             statuses.append(status)
+        } onRumble: { [rumbles] intensity in
+            rumbles.append(intensity)
         }
         link.connect()
     }

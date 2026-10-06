@@ -112,6 +112,9 @@ public enum Message: Equatable, Sendable {
 /// | 3    | ping    | Mac → phone | token u64: measures latency and tells the phone the Mac is still there   |
 /// | 4    | pong    | phone → Mac | the ping's token                                                          |
 /// | 5    | slot    | Mac → phone | slot u8 (player number minus one), inside the welcome                     |
+/// | 6    | rumble  | Mac → phone | sequence u32, intensity u8 (0 stops): the game's rumble                   |
+///
+/// A phone ignores message types it doesn't know, so an older phone ignores rumble.
 public enum SessionMessage: Equatable, Sendable {
     /// A complete controller snapshot. The phone sends snapshots rather than events,
     /// so a lost datagram is corrected by the next one and no button can get stuck.
@@ -120,9 +123,12 @@ public enum SessionMessage: Equatable, Sendable {
     case ping(token: UInt64)
     case pong(token: UInt64)
     case slot(UInt8)
+    /// The emulator re-sends rumble a few times a second while a game rumbles, and the Mac passes
+    /// each one on. The phone drops rumble older than the last it applied, like the Mac drops states.
+    case rumble(sequence: UInt32, intensity: UInt8)
 
     private enum MessageType: UInt8 {
-        case state = 1, goodbye, ping, pong, slot
+        case state = 1, goodbye, ping, pong, slot, rumble
     }
 
     /// Bytes in a state without motion, after the type byte.
@@ -167,6 +173,10 @@ public enum SessionMessage: Equatable, Sendable {
         case .slot(let slot):
             data.append(MessageType.slot.rawValue)
             data.append(slot)
+        case .rumble(let sequence, let intensity):
+            data.append(MessageType.rumble.rawValue)
+            data.appendBigEndian(sequence)
+            data.append(intensity)
         }
         return data
     }
@@ -213,6 +223,9 @@ public enum SessionMessage: Equatable, Sendable {
         case .slot:
             try requireLength(1)
             self = .slot(bytes[1])
+        case .rumble:
+            try requireLength(5)
+            self = .rumble(sequence: reader.read(UInt32.self), intensity: reader.read(UInt8.self))
         }
     }
 }

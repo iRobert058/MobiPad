@@ -27,6 +27,10 @@ public final class ControllerLink: @unchecked Sendable {
         public var resendInterval: Duration = .milliseconds(50)
         /// Without any message from the Mac for this long, the link reconnects.
         public var timeout: Duration = .seconds(3)
+        /// Rumble stops when the Mac hasn't passed it on again for this long, so a lost stop, or an
+        /// emulator that quit mid-rumble, can't leave the phone buzzing. Emulators re-send rumble 2 to
+        /// 10 times a second, so this allows one lost re-send at the slowest rate.
+        public var rumbleTimeout: Duration = .milliseconds(1500)
 
         public init() {}
     }
@@ -38,6 +42,7 @@ public final class ControllerLink: @unchecked Sendable {
     private let name: String
     private let timing: Timing
     private let onStatus: @Sendable (Status) -> Void
+    private let onRumble: @Sendable (UInt8) -> Void
 
     private var connection: NWConnection?
     /// Fresh for every connection, so every connection gets its own session key.
@@ -49,22 +54,28 @@ public final class ControllerLink: @unchecked Sendable {
     private var sequence: UInt32 = 0
     private var lastHeard = ContinuousClock.now
     private var lastSent = ContinuousClock.now
+    private var rumble: UInt8 = 0
+    private var lastRumbleSequence: UInt32?
+    private var lastRumbleHeard = ContinuousClock.now
 
     /// - Parameters:
     ///   - identity: this phone's long-term key; the Mac remembers it once the user allows the phone.
     ///   - onStatus: called on the link's queue whenever the status changes.
+    ///   - onRumble: called on the link's queue whenever the game's rumble changes. 0 stops it.
     public init(
         to endpoint: NWEndpoint,
         identity: SecureChannel.PrivateKey,
         name: String,
         timing: Timing = Timing(),
-        onStatus: @escaping @Sendable (Status) -> Void
+        onStatus: @escaping @Sendable (Status) -> Void,
+        onRumble: @escaping @Sendable (UInt8) -> Void = { _ in }
     ) {
         self.endpoint = endpoint
         self.identity = identity
         self.name = name
         self.timing = timing
         self.onStatus = onStatus
+        self.onRumble = onRumble
     }
 
     public func connect() {
@@ -100,6 +111,7 @@ public final class ControllerLink: @unchecked Sendable {
             timer = nil
             connection?.cancel()
             connection = nil
+            setRumble(0)
             setStatus(.disconnected)
         }
     }
@@ -121,6 +133,8 @@ public final class ControllerLink: @unchecked Sendable {
         self.connection = connection
         ephemeral = SecureChannel.PrivateKey()
         channel = nil
+        lastRumbleSequence = nil
+        setRumble(0)
         lastHeard = .now
         lastSent = .now - timing.helloInterval
         receive(on: connection)
@@ -170,6 +184,11 @@ public final class ControllerLink: @unchecked Sendable {
             case .slot(let slot):
                 // The offered slot was taken by another phone meanwhile.
                 setStatus(.connected(slot: Int(slot)))
+            case .rumble(let sequence, let intensity):
+                if let last = lastRumbleSequence, !SessionMessage.isSequence(sequence, newerThan: last) { return }
+                lastRumbleSequence = sequence
+                lastRumbleHeard = .now
+                setRumble(intensity)
             case .state, .goodbye, .pong:
                 break
             }
@@ -186,6 +205,9 @@ public final class ControllerLink: @unchecked Sendable {
             }
             setStatus(.connecting)
             openConnection()
+        }
+        if rumble > 0, now - lastRumbleHeard > timing.rumbleTimeout {
+            setRumble(0)
         }
         switch status {
         case .connected:
@@ -215,6 +237,12 @@ public final class ControllerLink: @unchecked Sendable {
 
     private func send(_ message: Message) {
         connection?.send(content: message.encoded(), completion: .idempotent)
+    }
+
+    private func setRumble(_ intensity: UInt8) {
+        guard intensity != rumble else { return }
+        rumble = intensity
+        onRumble(intensity)
     }
 
     private func setStatus(_ newStatus: Status) {

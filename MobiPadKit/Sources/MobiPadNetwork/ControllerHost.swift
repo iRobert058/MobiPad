@@ -71,6 +71,7 @@ public final class ControllerHost: @unchecked Sendable {
         var phoneEphemeral: Data?
         var welcome: Message?
         var lastSequence: UInt32?
+        var rumbleSequence: UInt32 = 0
     }
 
     /// - Parameters:
@@ -203,6 +204,17 @@ public final class ControllerHost: @unchecked Sendable {
         queue.async { [self] in
             denied.insert(identity)
             pending.remove(identity)
+        }
+    }
+
+    /// Passes an emulator's rumble on to the phone in `slot`. Intensity 0 stops it. The test player
+    /// has nothing to rumble.
+    public func rumble(slot: Int, intensity: UInt8) {
+        queue.async { [self] in
+            guard let id = peers.first(where: { $0.value.player?.slot == slot })?.key else { return }
+            peers[id]?.rumbleSequence &+= 1
+            guard let peer = peers[id] else { return }
+            sendSealed(.rumble(sequence: peer.rumbleSequence, intensity: intensity), to: peer)
         }
     }
 
@@ -364,7 +376,7 @@ public final class ControllerHost: @unchecked Sendable {
         case .ping(let token):
             sendSealed(.pong(token: token), to: peer)
 
-        case .slot:
+        case .slot, .rumble:
             break
         }
     }

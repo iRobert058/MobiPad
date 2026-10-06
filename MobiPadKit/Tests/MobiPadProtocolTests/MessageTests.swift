@@ -37,6 +37,7 @@ struct MessageTests {
         .ping(token: .max),
         .pong(token: 42),
         .slot(3),
+        .rumble(sequence: 0xFFFF_FFFF, intensity: 200),
     ]
 
     @Test(arguments: messages)
