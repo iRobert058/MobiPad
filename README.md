@@ -5,7 +5,7 @@ Use an iPhone as a wireless game controller for emulators on a Mac. Up to four p
 https://github.com/user-attachments/assets/b661fbea-f4f7-4dba-b251-b9e38dd9dfdb
 
 ```
-iPhone ──Wi-Fi (encrypted UDP, Bonjour)──▶ Mac companion app ──▶ DSU on localhost ──▶ Dolphin, Cemu
+iPhone ──Wi-Fi (encrypted UDP, Bonjour)──▶ Mac companion app ──▶ DSU on localhost ──▶ Dolphin, Cemu, Eden
                                                             └──▶ key presses ───────▶ Ryujinx (Player 1)
 ```
 
@@ -103,9 +103,27 @@ The **Classic Controller** profiles match buttons by name: A, B, X, Y; LB/RB are
 
 In Input settings, choose the **DSUController** API, point it at `127.0.0.1`, port `26760`, and pick the controller for each player. Cemu reads the same DSU data as Dolphin.
 
+### Eden (Switch)
+
+[Eden](https://eden-emu.dev) reads the phone as a full DSU controller: every button, both sticks, and the phone's tilt from the Wii Remote layouts. For Switch games, use the phone's Classic Controller layout.
+
+1. Quit Eden, then click **Set Up Eden** in the Mac menu. It turns on Eden's DSU controller (Eden calls it the UDP controller) for MobiPad's server, which Eden already lists by default, and adds a controller profile for each player: "MobiPad Player 1" to 4. It doesn't change your current controller settings. If Eden's settings have to change while Eden is open, it asks you to quit Eden first, because Eden overwrites its settings when it quits.
+2. In Eden's settings, open **Controls**. For Player 1, choose the profile **MobiPad Player 1** and click **Load**. For more players, connect Player 2 and load **MobiPad Player 2**, and so on.
+
+The profiles are Eden's own automatic mapping for a DSU controller. Like a Switch controller, it goes by position, so the letters differ from the phone's:
+
+| Phone | Switch | | Phone | Switch |
+|---|---|---|---|---|
+| A (bottom) | B | | LB / RB | L / R |
+| B (right) | A | | LT / RT | ZL / ZR |
+| X (left) | Y | | View / Menu | − / + |
+| Y (top) | X | | Home | Home |
+
+The sticks, the D-pad, L3 and R3 map directly. Eden keeps its settings in `~/.config/eden`, and the profiles in its `input` folder.
+
 ### Ryujinx
 
-Ryujinx can't read DSU input (see the research doc), so MobiPad sends Player 1 as key presses:
+For Switch games, Eden (above) gets the whole controller. Ryujinx, and Ryubing, which carries it on, can't read DSU input (see the research doc), so MobiPad sends Player 1 as key presses:
 
 1. In the Mac menu, turn on **Player 1 as keyboard**. The first time, macOS asks you to allow MobiPad under Privacy & Security → Accessibility. Do that, then turn the toggle on again.
 2. In Ryujinx, use the keyboard as Player 1's input device. MobiPad presses Ryujinx's default keys, matched by button position:
@@ -180,12 +198,13 @@ Covered by the package tests (`swift test`):
 - **Streaming input (FR-06, NFR-01):** full snapshots on every change, resent every 50 ms, and old packets dropped.
 - **Up to four players (FR-10)**, each keeping their player number across dropouts.
 - **Automatic reconnect (FR-09)** and **latency (DR-03)**.
-- **DSU for Dolphin and Cemu**, and **keyboard key mapping for Ryujinx**.
+- **DSU for Dolphin, Cemu and Eden**, and **keyboard key mapping for Ryujinx**.
 - **Test controller in the Mac menu.**
 - **Set Up Dolphin (UX-01):** the DSU server entry and the GameCube, Wii Remote and Classic Controller profiles, with their key and input names checked against Dolphin's source.
+- **Set Up Eden:** turning on the UDP controller, the server list, and the profiles, checked against Eden's key names and its own automatic mapping.
 - **Motion (both Wii Remotes):** the motion in the wire format, turning Core Motion readings into the controller's axes, the sideways turn (checked against Dolphin's own Sideways option), and the DSU motion fields as Dolphin reads them.
 
-Not tried yet: Cemu, Ryujinx with keyboard output, four players at once, haptics, the wider touch area around buttons (so a thumb partly on 2 still accelerates), moving and resizing controls by touch, and latency figures on a real network.
+Not tried yet: Cemu, Eden, Ryujinx with keyboard output, four players at once, haptics, the wider touch area around buttons (so a thumb partly on 2 still accelerates), moving and resizing controls by touch, and latency figures on a real network.
 
 How the motion controls were built and tested, with the measurements behind the choices: [TILT_NOTES.md](TILT_NOTES.md).
 
@@ -193,4 +212,4 @@ How the motion controls were built and tested, with the measurements behind the 
 
 MIT; see [LICENSE](LICENSE).
 
-MobiPad isn't affiliated with or endorsed by Nintendo, Sony, Microsoft, Apple, or the Dolphin, Cemu or Ryujinx projects. Wii, GameCube and Mario Kart are trademarks of Nintendo, PlayStation of Sony, and Xbox of Microsoft. They're named here only to describe what MobiPad works with.
+MobiPad isn't affiliated with or endorsed by Nintendo, Sony, Microsoft, Apple, or the Dolphin, Cemu, Eden or Ryujinx projects. Wii, GameCube, Switch and Mario Kart are trademarks of Nintendo, PlayStation of Sony, and Xbox of Microsoft. They're named here only to describe what MobiPad works with.

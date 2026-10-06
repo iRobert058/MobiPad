@@ -16,6 +16,7 @@ No special test machine is needed: both routes work on a normal Mac with SIP on.
 **Second emulator (Cemu or Ryujinx, checked against their source and docs on 2026-09-30):**
 - **Cemu** (Wii U) has a full DSU controller API ("DSUController": buttons, sticks, triggers, motion), built on every platform, macOS included. It reads buttons from the DSU bitmask bytes, while Dolphin reads the analog pressure bytes; MobiPad fills both.
 - **Ryujinx** (Switch): its docs list SDL gamepads and the keyboard as input devices, with no DSU option. As far as I know its "CemuHook" support covers motion only, but I couldn't confirm that in its source, because the repository has moved since the original project ended. MobiPad therefore feeds Ryujinx through the keyboard route, for Player 1.
+- **Eden** (Switch, added 2026-10-06): descends from yuzu, and its DSU client (`input_common/drivers/udp_client.cpp`) is a full controller: buttons, sticks, motion and touch, with an automatic mapping. It has an official macOS build. MobiPad sets it up with Set Up Eden. Ryubing, which carries Ryujinx on, couldn't be checked in its source (its server refused the connection); setup guides describe the same motion-only CemuHook option as Ryujinx.
 
 Caveat: Dolphin labels DSU buttons with PlayStation names (Cross, Circle, Square, Triangle). Mapping them is a one-time step in Dolphin's controller settings, and MobiPad could ship a ready-made Dolphin profile.
 
