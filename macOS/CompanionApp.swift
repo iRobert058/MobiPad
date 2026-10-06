@@ -18,7 +18,7 @@ struct CompanionApp: App {
 }
 
 /// Phones connect to `host`; every state it receives goes straight to the DSU server, where
-/// emulators such as Dolphin and Cemu pick it up, and optionally to the keyboard (Player 1 only).
+/// emulators such as Dolphin, Cemu and Eden pick it up, and optionally to the keyboard (Player 1 only).
 @MainActor @Observable
 final class CompanionModel {
     enum ServiceStatus: Equatable {
@@ -39,6 +39,8 @@ final class CompanionModel {
     private(set) var testPlayerFailed = false
     /// The result of the last click on Set Up Dolphin.
     private(set) var dolphinSetup: Result<DolphinSetup.Outcome, any Error>?
+    /// The result of the last click on Set Up Eden.
+    private(set) var edenSetup: Result<EdenSetup.Outcome, any Error>?
     /// Identity key (base64) → the name the phone had when it was approved.
     private(set) var approvedPhones: [String: String]
     private var approvalQueue: [ControllerHost.ApprovalRequest] = []
@@ -96,6 +98,14 @@ final class CompanionModel {
         dolphinSetup = Result {
             try DolphinSetup.install {
                 !NSRunningApplication.runningApplications(withBundleIdentifier: "org.dolphin-emu.dolphin").isEmpty
+            }
+        }
+    }
+
+    func setUpEden() {
+        edenSetup = Result {
+            try EdenSetup.install {
+                !NSRunningApplication.runningApplications(withBundleIdentifier: EdenSetup.bundleIdentifier).isEmpty
             }
         }
     }
