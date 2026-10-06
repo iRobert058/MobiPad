@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>MobiPad Thumbnail</title>
+<!--
+  MobiPad thumbnail, 1280 x 720 (16:9). Render with render.sh:
+  thumbnail-2560x1440.png for the portfolio, thumbnail-1280x720.jpg for YouTube.
+-->
+<style>
+  @font-face { font-family: "MobiMono"; src: url("file:///System/Library/Fonts/SFNSMono.ttf"); }
+
+  :root {
+    --bg-deep: #12050a;
+    --bg-wine: #4a1424;
+    --amber: #f2ad3a;
+    --amber-hi: #ffd27a;
+    --amber-lo: #e08a26;
+    --ink: #fbeef1;
+    --ink-soft: rgba(251, 238, 241, 0.72);
+    --key: #2b2b2e;
+    --key-label: #ffffff;
+    --display: "SF Pro Display", -apple-system, system-ui, sans-serif;
+    --text: "SF Pro Text", "SF Pro Display", -apple-system, system-ui, sans-serif;
+    --mono: "MobiMono", "SF Mono", Menlo, monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1280px; height: 720px; overflow: hidden; background: var(--bg-deep); }
+
+  .canvas {
+    position: relative;
+    width: 1280px;
+    height: 720px;
+    overflow: hidden;
+    background:
+      radial-gradient(900px 620px at 8% 0%, rgba(122, 34, 60, 0.85), transparent 70%),
+      radial-gradient(760px 520px at 74% 52%, rgba(160, 52, 62, 0.42), transparent 70%),
+      radial-gradient(520px 360px at 76% 56%, rgba(242, 173, 58, 0.16), transparent 70%),
+      linear-gradient(160deg, #3a0f1d 0%, #22080f 55%, #12050a 100%);
+    font-family: var(--text);
+    color: var(--ink);
+  }
+
+  /* Faint dot grid, fading out toward the edges */
+  .grid {
+    position: absolute; inset: 0;
+    background-image: radial-gradient(rgba(255, 220, 228, 0.07) 1px, transparent 1.2px);
+    background-size: 24px 24px;
+    -webkit-mask-image: radial-gradient(70% 80% at 60% 45%, #000 20%, transparent 80%);
+            mask-image: radial-gradient(70% 80% at 60% 45%, #000 20%, transparent 80%);
+  }
+
+  /* Bokeh and thin rings, as in the trailer */
+  .bokeh { position: absolute; border-radius: 50%; filter: blur(6px); }
+  .ring  { position: absolute; border-radius: 50%; border: 1px solid rgba(255, 210, 222, 0.09); }
+
+  .grain {
+    position: absolute; inset: 0; opacity: 0.09; mix-blend-mode: overlay; pointer-events: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  }
+  .vignette {
+    position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(120% 120% at 50% 45%, transparent 55%, rgba(8, 2, 4, 0.55) 100%);
+  }
+
+  /* ---------- Copy ---------- */
+  .copy {
+    position: absolute; left: 72px; top: 0; bottom: 0; width: 540px;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .brand { display: flex; align-items: center; gap: 18px; margin-bottom: 38px; }
+  .brand .icon {
+    width: 68px; height: 68px; border-radius: 16px; overflow: hidden; flex: none;
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.14) inset,
+      0 12px 30px rgba(0, 0, 0, 0.45),
+      0 0 40px rgba(163, 48, 79, 0.35);
+  }
+  .brand .icon svg { display: block; width: 100%; height: 100%; }
+  .brand .name {
+    font-family: var(--display); font-weight: 700; font-size: 38px; letter-spacing: -0.02em;
+    background: linear-gradient(180deg, #ffffff 0%, #f2cfd8 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+
+  h1 {
+    font-family: var(--display); font-weight: 800; font-size: 86px; line-height: 0.98;
+    letter-spacing: -0.04em;
+  }
+  h1 .w {
+    background: linear-gradient(180deg, #ffffff 10%, #f3cdd7 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  h1 .a {
+    background: linear-gradient(180deg, var(--amber-hi) 0%, var(--amber) 55%, var(--amber-lo) 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 0 22px rgba(242, 173, 58, 0.28));
+  }
+  h1 span { display: inline; }
+
+  .sub {
+    margin-top: 28px;
+    font-family: var(--display); font-weight: 600; font-size: 30px; letter-spacing: -0.01em;
+    color: var(--ink-soft);
+  }
+  .sub b { color: var(--amber); font-weight: 700; }
+
+  .chips { display: flex; gap: 10px; margin-top: 30px; }
+  .chip {
+    display: flex; align-items: center; gap: 9px;
+    font-family: var(--mono); font-size: 15px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
+    color: #f6dcae;
+    padding: 9px 15px 9px 13px; border-radius: 10px;
+    background: linear-gradient(180deg, rgba(74, 24, 36, 0.75), rgba(40, 12, 20, 0.75));
+    border: 1px solid rgba(242, 173, 58, 0.38);
+    box-shadow: 0 0 18px rgba(242, 173, 58, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+  .chip i {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--amber);
+    box-shadow: 0 0 8px var(--amber);
+  }
+
+  /* ---------- Phone ---------- */
+  /* Built at the screenshot's own scale (1000 x 460 screen), then scaled down. */
+  .phone-wrap {
+    position: absolute; left: 922px; top: 336px; width: 0; height: 0;
+  }
+  .phone-shadow {
+    position: absolute; left: -340px; top: -40px; width: 680px; height: 260px; border-radius: 50%;
+    background: rgba(5, 1, 2, 0.75); filter: blur(46px);
+    transform: rotate(-9deg) translateY(90px);
+  }
+  .phone {
+    position: absolute; left: -516px; top: -246px; width: 1032px; height: 492px;
+    transform: rotate(-9deg) scale(0.62);
+    transform-origin: 50% 50%;
+    border-radius: 82px;
+    background: linear-gradient(150deg, #8a6f74 0%, #3c2b30 18%, #1b1316 50%, #3a2a2f 82%, #7d6469 100%);
+    box-shadow:
+      0 0 0 2px rgba(0, 0, 0, 0.6),
+      0 40px 80px rgba(0, 0, 0, 0.55),
+      0 0 120px rgba(242, 173, 58, 0.10);
+  }
+  .phone::before { /* inner black bezel */
+    content: ""; position: absolute; inset: 5px; border-radius: 77px; background: #050505;
+  }
+  .side { position: absolute; background: linear-gradient(180deg, #6d585d, #2e2226); border-radius: 3px; }
+  .side.t { top: -5px; height: 7px; }
+
+  .screen {
+    position: absolute; left: 16px; top: 16px; width: 1000px; height: 460px;
+    border-radius: 66px; overflow: hidden; background: #000;
+  }
+  .screen .sheen {
+    position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(115deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.0) 32%, rgba(255, 255, 255, 0) 68%, rgba(255, 255, 255, 0.035) 100%);
+  }
+  .island {
+    position: absolute; left: 22px; top: 172px; width: 36px; height: 116px; border-radius: 18px; background: #000;
+    box-shadow: none;
+  }
+
+  .hdr { position: absolute; left: 0; right: 0; text-align: center; font-family: var(--text); }
+  .hdr.who { top: 16px; font-size: 15px; color: #8e8e93; }
+  .hdr.links { top: 42px; font-size: 14.5px; display: flex; justify-content: center; gap: 24px; }
+  .hdr.links .b { color: #0a84ff; }
+  .hdr.links .r { color: #ff453a; }
+
+  .k {
+    position: absolute; width: 50px; height: 50px; margin: -25px 0 0 -25px; border-radius: 50%;
+    background: var(--key); color: var(--key-label);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--text); font-weight: 600; font-size: 19px;
+  }
+  .k.small { font-size: 17px; }
+  .k.tri { font-size: 15px; }
+
+  .stick {
+    position: absolute; width: 116px; height: 116px; margin: -58px 0 0 -58px; border-radius: 50%;
+    background: #1c1c1e;
+  }
+  .stick .knob {
+    position: absolute; left: 29px; top: 29px; width: 58px; height: 58px; border-radius: 50%;
+    background: #6c6c70;
+  }
+
+  /* Pressed button and moving stick, lit amber like the trailer */
+  .k.lit {
+    background: radial-gradient(circle at 50% 50%, #fff8e6 0%, #ffd27a 30%, #f2ad3a 58%, #b8691c 100%);
+    color: #3a1a05;
+    box-shadow: 0 0 18px 4px rgba(242, 173, 58, 0.75), 0 0 46px 10px rgba(242, 173, 58, 0.35);
+  }
+  .halo {
+    position: absolute; border-radius: 50%; border: 3px solid var(--amber);
+    box-shadow: 0 0 16px rgba(242, 173, 58, 0.8), inset 0 0 16px rgba(242, 173, 58, 0.45);
+  }
+  .knob.lit {
+    background: radial-gradient(circle at 50% 50%, #fff3d6 0%, #f6c062 45%, #c77d22 100%);
+    box-shadow: 0 0 20px 4px rgba(242, 173, 58, 0.6);
+  }
+</style>
+</head>
+<body>
+<div class="canvas">
+  <div class="grid"></div>
+
+  <div class="bokeh" style="left:640px; top:96px;  width:16px; height:16px; background:rgba(242,173,58,.35)"></div>
+  <div class="bokeh" style="left:1184px;top:88px;  width:26px; height:26px; background:rgba(242,173,58,.22)"></div>
+  <div class="bokeh" style="left:1210px;top:560px; width:20px; height:20px; background:rgba(242,173,58,.25)"></div>
+  <div class="bokeh" style="left:600px; top:640px; width:30px; height:30px; background:rgba(255,160,170,.12)"></div>
+  <div class="bokeh" style="left:42px;  top:640px; width:14px; height:14px; background:rgba(242,173,58,.22)"></div>
+  <div class="bokeh" style="left:1040px;top:640px; width:12px; height:12px; background:rgba(242,173,58,.3)"></div>
+  <div class="ring" style="left:1110px; top:40px;  width:62px; height:62px"></div>
+  <div class="ring" style="left:690px;  top:600px; width:44px; height:44px"></div>
+  <div class="ring" style="left:620px;  top:40px;  width:30px; height:30px"></div>
+  <div class="ring" style="left:-70px;  top:600px; width:140px;height:140px"></div>
+
+  <div class="copy">
+    <div class="brand">
+      <div class="icon">
+        <svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="g0" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#A3304F"/><stop offset="1" stop-color="#560F26"/></linearGradient>
+            <filter id="glow" x="-1" y="-1" width="3" height="3"><feGaussianBlur stdDeviation="22"/></filter>
+          </defs>
+          <rect width="1024" height="1024" fill="url(#g0)"/>
+          <path d="M228,326H796A96,96 0 0 1 892,422V602A96,96 0 0 1 796,698H228A96,96 0 0 1 132,602V422A96,96 0 0 1 228,326Z" fill="#FFFFFF"/>
+          <path d="M167,466H167A11,11 0 0 1 178,477V547A11,11 0 0 1 167,558H167A11,11 0 0 1 156,547V477A11,11 0 0 1 167,466ZM323,424H349A16,16 0 0 1 365,440V483H408A16,16 0 0 1 424,499V525A16,16 0 0 1 408,541H365V584A16,16 0 0 1 349,600H323A16,16 0 0 1 307,584V541H264A16,16 0 0 1 248,525V499A16,16 0 0 1 264,483H307V440A16,16 0 0 1 323,424ZM672,448A32,32 0 1 0 736,448A32,32 0 1 0 672,448ZM608,512A32,32 0 1 0 672,512A32,32 0 1 0 608,512ZM736,512A32,32 0 1 0 800,512A32,32 0 1 0 736,512Z" fill="#5C1530"/>
+          <circle cx="704" cy="576" r="46" fill="#F7B547" opacity="0.8" filter="url(#glow)"/>
+          <path d="M672,576A32,32 0 1 0 736,576A32,32 0 1 0 672,576Z" fill="#EFA92E"/>
+        </svg>
+      </div>
+      <div class="name">MobiPad</div>
+    </div>
+
+    <h1>
+      <span class="w">Your iPhone</span><br>
+      <span class="w">is a </span><span class="a">game</span><br>
+      <span class="a">controller.</span>
+    </h1>
+
+    <div class="sub">For emulators on your <b>Mac</b></div>
+
+    <div class="chips">
+      <div class="chip"><i></i>Dolphin</div>
+      <div class="chip"><i></i>Cemu</div>
+      <div class="chip"><i></i>Ryujinx</div>
+    </div>
+  </div>
+
+  <div class="phone-wrap">
+    <div class="phone-shadow"></div>
+    <div class="phone">
+      <div class="side t" style="left:150px; width:70px"></div>
+      <div class="side t" style="left:250px; width:110px"></div>
+      <div class="side t" style="left:380px; width:110px"></div>
+      <div class="screen">
+        <div class="hdr who">Sam · Player 1</div>
+        <div class="hdr links"><span class="b">Classic Controller</span><span class="b">Edit Layout</span><span class="r">Disconnect</span></div>
+
+        <div class="k small" style="left:122px; top:67px">LT</div>
+        <div class="k small" style="left:188px; top:67px">LB</div>
+
+        <div class="halo" style="left:171px; top:162px; width:150px; height:150px; margin:-75px 0 0 -75px"></div>
+        <div class="stick" style="left:171px; top:162px"><div class="knob lit" style="left:44px; top:16px"></div></div>
+
+        <div class="k tri" style="left:171px; top:268px">▲</div>
+        <div class="k tri" style="left:121px; top:323px">◀</div>
+        <div class="k tri" style="left:221px; top:323px">▶</div>
+        <div class="k tri" style="left:171px; top:378px">▼</div>
+
+        <div class="k" style="left:450px; top:219px; font-size:18px">View</div>
+        <div class="k" style="left:549px; top:219px; font-size:18px">Menu</div>
+
+        <div class="k small" style="left:812px; top:67px">RB</div>
+        <div class="k small" style="left:877px; top:67px">RT</div>
+
+        <div class="k" style="left:828px; top:131px">Y</div>
+        <div class="k" style="left:778px; top:186px">X</div>
+        <div class="k" style="left:878px; top:186px">B</div>
+        <div class="halo" style="left:828px; top:241px; width:84px; height:84px; margin:-42px 0 0 -42px"></div>
+        <div class="k lit" style="left:828px; top:241px">A</div>
+
+        <div class="stick" style="left:828px; top:338px"><div class="knob"></div></div>
+
+        <div class="island"></div>
+        <div class="sheen"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grain"></div>
+  <div class="vignette"></div>
+</div>
+</body>
+</html>
