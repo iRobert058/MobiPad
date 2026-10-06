@@ -6,8 +6,14 @@ Branch: `tilt-controls`, made from `main` on 2026-10-03. Nothing is pushed or me
 
 - **Done:** the original eight steps; the pointer work; after the live tests: Dolphin's gyroscope calibration off, Point's Accelerometer Influence off, buttons that always count a completed tap, the pointing Wii Remote held upright like a real remote, and taps held for at least 120 ms.
 - **Working on:** nothing. Merged into `main` on 2026-10-03, after the upright pointing remote and quick A taps worked in the Wii Menu.
-- **Next step:** check Mario Kart steering (step 5 of the manual test).
+- **Next step:** none. Mario Kart steering was checked on 2026-10-06 and works.
 - **Half-finished or broken:** nothing known.
+
+## Fourth live test (2026-10-06)
+
+- **Mario Kart Wii steering works,** with the phone held sideways.
+- **The 2 button didn't register with a thumb only partly on it.** Every button's touch area now reaches past its circle.
+- **Rumble was tried and dropped.** Game rumble needed a changed Dolphin (its DSU client sends no rumble), and with it play had noticeable lag and input delay. Not worth it for a small feature. The attempt is kept on branches `rumble` and `dolphin-rumble`.
 
 ## Third live test (2026-10-03)
 
@@ -128,7 +134,7 @@ Docs: `README.md` and this file.
 
 ## Unfinished or uncertain
 
-- **Not run on a device or in Dolphin.** All of the mapping rests on reading Dolphin's source plus the tests above. Steering direction is the first thing to check (step 5 of the manual test).
+- **Run on a device and in Dolphin since.** Steering direction was confirmed in Mario Kart Wii on 2026-10-06.
 - **Layouts:** overnight I didn't use the Simulator (your folder rule). Afterwards, with you back, I checked both Wii Remote layouts in the Simulator, and by calculation that no controls overlap on the smallest or a large iPhone.
 - **No Nunchuk.** Wii Party doesn't need one, but some games do.
 - **The pointer's feel is untested.** Total Yaw and Dolphin's other Point settings are left at their defaults until you've tried it.

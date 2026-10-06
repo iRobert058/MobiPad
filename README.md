@@ -171,6 +171,7 @@ Tried on real hardware:
 - An iPhone 16 Pro (and the iPhone Simulator) finds the Mac, gets approved, connects and plays.
 - Dolphin reads both sticks and all buttons over DSU, as a GameCube controller.
 - Set Up Dolphin's Wii Remote profile loads in Dolphin. In the Wii Menu the pointer follows the phone in every direction, held upright, and A selects.
+- Mario Kart Wii: steering by tilting the phone sideways works.
 - Layout editing and dark mode draw correctly in the Simulator.
 
 Covered by the package tests (`swift test`):
@@ -184,7 +185,7 @@ Covered by the package tests (`swift test`):
 - **Set Up Dolphin (UX-01):** the DSU server entry and the GameCube, Wii Remote and Classic Controller profiles, with their key and input names checked against Dolphin's source.
 - **Motion (both Wii Remotes):** the motion in the wire format, turning Core Motion readings into the controller's axes, the sideways turn (checked against Dolphin's own Sideways option), and the DSU motion fields as Dolphin reads them.
 
-Not tried yet: Cemu, Ryujinx with keyboard output, four players at once, haptics, moving and resizing controls by touch, latency figures on a real network, and steering in Mario Kart Wii.
+Not tried yet: Cemu, Ryujinx with keyboard output, four players at once, haptics, the wider touch area around buttons (so a thumb partly on 2 still accelerates), moving and resizing controls by touch, and latency figures on a real network.
 
 How the motion controls were built and tested, with the measurements behind the choices: [TILT_NOTES.md](TILT_NOTES.md).
 
