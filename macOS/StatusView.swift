@@ -82,7 +82,7 @@ struct StatusView: View {
                 Text("Turns on Eden’s DSU controller, with a controller profile for each player.")
                     .foregroundStyle(.secondary)
             case .success(.installed):
-                Text("Done. In Eden’s settings, open Controls, choose the profile “MobiPad Player 1” for Player 1, and click Load. Player 2 gets “MobiPad Player 2”, and so on; connect those players too.")
+                Text("Done. In Eden’s settings, open Controls, choose the profile “MobiPad Player 1” for Player 1, and click Load. Player 2 gets “MobiPad Player 2”, and so on; connect those players too. For the phone’s Joy-Con layouts, load “MobiPad Joy-Con Player 1” instead.")
                     .foregroundStyle(.secondary)
             case .success(.edenIsRunning):
                 Text("Quit Eden first, because it overwrites its settings when it quits. Then click Set Up Eden again.")
