@@ -9,6 +9,11 @@ enum ControllerKind: String, CaseIterable, Identifiable {
     /// A Wii Remote pointed at the TV: the screen turns upright and the phone is held in one hand like a
     /// real remote, its top toward the TV, to aim Dolphin's pointer (Wii Party, the Wii Menu). For Dolphin.
     case wiiPointer
+    /// A single right Joy-Con held sideways, as a small controller with SL and SR on top, steered by
+    /// tilting (Mario Kart 8). For Eden.
+    case joyConSideways
+    /// A single right Joy-Con held upright in one hand, its top toward the TV (Switch Sports). For Eden.
+    case joyConUpright
 
     var id: Self { self }
 
@@ -17,14 +22,19 @@ enum ControllerKind: String, CaseIterable, Identifiable {
         case .classic: "Classic Controller"
         case .wiiRemote: "Wii Remote (sideways)"
         case .wiiPointer: "Wii Remote (pointing)"
+        case .joyConSideways: "Joy-Con (sideways)"
+        case .joyConUpright: "Joy-Con (upright)"
         }
     }
 
-    /// The Wii Remotes send the phone's motion.
+    /// The Wii Remotes and Joy-Cons send the phone's motion.
     var usesMotion: Bool { self != .classic }
 
-    /// The pointing Wii Remote is held upright. The others are held in landscape.
-    var isUpright: Bool { self == .wiiPointer }
+    /// The pointing Wii Remote and the upright Joy-Con are held upright. The others are held in landscape.
+    var isUpright: Bool { self == .wiiPointer || self == .joyConUpright }
+
+    /// Held sideways like a steering wheel, so the screen shows how far the phone is turned.
+    var isSteered: Bool { self == .wiiRemote || self == .joyConSideways }
 }
 
 /// Where each control sits on the controller screen, how big it is, and whether it's shown (UX-03).
@@ -64,6 +74,11 @@ extension ControllerLayout {
         case wiiDpad, wiiA, wiiB, wiiOne, wiiTwo, wiiMinus, wiiHome, wiiPlus, wiiRecenter
         // The Wii Remote pointed at the TV, held upright.
         case pointDpad, pointA, pointB, pointOne, pointTwo, pointMinus, pointHome, pointPlus, pointRecenter
+        // A right Joy-Con held sideways.
+        case joyStick, joyButtons, joySL, joySR, joyPlus, joyHome, joyR, joyZR, joyStickPress
+        // A right Joy-Con held upright.
+        case joyUprightStick, joyUprightButtons, joyUprightSL, joyUprightSR, joyUprightPlus, joyUprightHome
+        case joyUprightR, joyUprightZR, joyUprightStickPress
 
         var id: Self { self }
 
@@ -77,6 +92,11 @@ extension ControllerLayout {
             case .pointDpad, .pointA, .pointB, .pointOne, .pointTwo, .pointMinus, .pointHome, .pointPlus,
                  .pointRecenter:
                 .wiiPointer
+            case .joyStick, .joyButtons, .joySL, .joySR, .joyPlus, .joyHome, .joyR, .joyZR, .joyStickPress:
+                .joyConSideways
+            case .joyUprightStick, .joyUprightButtons, .joyUprightSL, .joyUprightSR, .joyUprightPlus,
+                 .joyUprightHome, .joyUprightR, .joyUprightZR, .joyUprightStickPress:
+                .joyConUpright
             }
         }
 
@@ -112,6 +132,15 @@ extension ControllerLayout {
             case .pointMinus: "−"
             case .pointHome: "Home"
             case .pointPlus: "+"
+            case .joyStick, .joyUprightStick: "Stick"
+            case .joyButtons, .joyUprightButtons: "A B X Y"
+            case .joySL, .joyUprightSL: "SL"
+            case .joySR, .joyUprightSR: "SR"
+            case .joyPlus, .joyUprightPlus: "+"
+            case .joyHome, .joyUprightHome: "Home"
+            case .joyR, .joyUprightR: "R"
+            case .joyZR, .joyUprightZR: "ZR"
+            case .joyStickPress, .joyUprightStickPress: "Stick click"
             }
         }
 
@@ -154,6 +183,29 @@ extension ControllerLayout {
             case .pointPlus: Placement(center: CGPoint(x: 0.72, y: 0.74))
             case .pointOne: Placement(center: CGPoint(x: 0.5, y: 0.85))
             case .pointTwo: Placement(center: CGPoint(x: 0.5, y: 0.94))
+            // Joy-Con sideways, as it lies in the hands: the stick under the left thumb, the buttons under
+            // the right, SL and SR as shoulder buttons, + and Home in the middle. R and ZR sit on the back
+            // of a sideways Joy-Con, so they start hidden, like the stick click.
+            case .joyStick: Placement(center: CGPoint(x: 0.18, y: 0.56))
+            case .joyButtons: Placement(center: CGPoint(x: 0.82, y: 0.56))
+            case .joySL: Placement(center: CGPoint(x: 0.1, y: 0.14), scale: 1.3)
+            case .joySR: Placement(center: CGPoint(x: 0.9, y: 0.14), scale: 1.3)
+            case .joyHome: Placement(center: CGPoint(x: 0.42, y: 0.5))
+            case .joyPlus: Placement(center: CGPoint(x: 0.58, y: 0.5))
+            case .joyR: Placement(center: CGPoint(x: 0.42, y: 0.84), isShown: false)
+            case .joyZR: Placement(center: CGPoint(x: 0.58, y: 0.84), isShown: false)
+            case .joyStickPress: Placement(center: CGPoint(x: 0.34, y: 0.84), isShown: false)
+            // Joy-Con upright, top to bottom as on the Joy-Con: R and ZR, +, the buttons, the stick, Home.
+            // SL and SR are on its rail, out of the thumb's reach, so they start hidden.
+            case .joyUprightR: Placement(center: CGPoint(x: 0.35, y: 0.14), scale: 1.2)
+            case .joyUprightZR: Placement(center: CGPoint(x: 0.65, y: 0.14), scale: 1.2)
+            case .joyUprightPlus: Placement(center: CGPoint(x: 0.8, y: 0.24))
+            case .joyUprightButtons: Placement(center: CGPoint(x: 0.5, y: 0.4), scale: 1.3)
+            case .joyUprightStick: Placement(center: CGPoint(x: 0.5, y: 0.66), scale: 1.2)
+            case .joyUprightHome: Placement(center: CGPoint(x: 0.5, y: 0.84))
+            case .joyUprightSL: Placement(center: CGPoint(x: 0.12, y: 0.5), isShown: false)
+            case .joyUprightSR: Placement(center: CGPoint(x: 0.88, y: 0.5), isShown: false)
+            case .joyUprightStickPress: Placement(center: CGPoint(x: 0.8, y: 0.66), isShown: false)
             }
         }
     }

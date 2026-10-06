@@ -236,12 +236,15 @@ public enum DolphinSetup {
     }
 }
 
-/// Reads and changes `Key = Value` lines in Dolphin's INI files, leaving every other line as it was.
-/// Keys are case-insensitive, as in Dolphin.
+/// Reads and changes `Key = Value` lines in Dolphin's and Eden's INI files, leaving every other line as
+/// it was. Keys are case-insensitive, as in Dolphin.
 struct INIText {
     private var lines: [String]
+    /// What goes between key and value in the lines it writes: Dolphin writes " = ", Eden "=".
+    private let separator: String
 
-    init(_ text: String) {
+    init(_ text: String, separator: String = " = ") {
+        self.separator = separator
         lines = text.isEmpty ? [] : text.components(separatedBy: "\n")
         if lines.last == "" { lines.removeLast() }
     }
@@ -253,7 +256,7 @@ struct INIText {
     }
 
     mutating func set(_ key: String, to value: String, in section: String) {
-        let line = "\(key) = \(value)"
+        let line = "\(key)\(separator)\(value)"
         if let index = index(of: key, in: section) {
             lines[index] = line
         } else if let range = range(of: section) {

@@ -5,7 +5,7 @@ Use an iPhone as a wireless game controller for emulators on a Mac. Up to four p
 https://github.com/user-attachments/assets/b661fbea-f4f7-4dba-b251-b9e38dd9dfdb
 
 ```
-iPhone ──Wi-Fi (encrypted UDP, Bonjour)──▶ Mac companion app ──▶ DSU on localhost ──▶ Dolphin, Cemu
+iPhone ──Wi-Fi (encrypted UDP, Bonjour)──▶ Mac companion app ──▶ DSU on localhost ──▶ Dolphin, Cemu, Eden
                                                             └──▶ key presses ───────▶ Ryujinx (Player 1)
 ```
 
@@ -56,7 +56,7 @@ You need Xcode (free, from the Mac App Store) and your Apple ID. A paid develope
    To try the iPhone app without a phone, run the **MobiPad** scheme on an iPhone Simulator instead. It finds the Mac app the same way. Turn the Simulator to landscape with ⌘→.
 5. In the iPhone app, type your name and pick your Mac. The first time, the Mac asks **"Allow … to connect?"**. After you click Allow, the phone shows up as a player and is remembered from then on.
 
-### Classic Controller or a Wii Remote
+### Classic Controller, a Wii Remote or a Joy-Con
 
 Choose the controller on the start screen, or with the menu next to **Edit Layout** on the controller screen:
 
@@ -64,7 +64,10 @@ Choose the controller on the start screen, or with the menu next to **Edit Layou
 - **Wii Remote (sideways):** held like a steering wheel or an NES pad, screen toward you. Tilting the phone steers, as in Mario Kart Wii. The steering wheel next to the player name turns as you tilt, so you can see tilt is working.
 - **Wii Remote (pointing):** for pointer games like Wii Party and the Wii Menu. The screen turns upright: hold the phone in one hand like a Wii Remote, screen up, with its top toward the TV, and aim with it. The buttons run top to bottom as on the remote, with A big under your thumb and B below it. Aim at the middle of the TV and tap **Center** to recenter the pointer whenever it drifts.
 
-Both Wii Remotes are for Wii games in Dolphin (see below), and you can switch between them mid-game, for example between Wii Party's minigames. They need the Mac app from the same version: an older Mac app ignores the phone while it sends motion.
+- **Joy-Con (sideways):** a single right Joy-Con held sideways, as a small controller: the stick under your left thumb, the buttons under your right, SL and SR as shoulder buttons. Tilting steers, as in Mario Kart 8. The buttons show the letters games read them as when a Joy-Con is sideways (the right one is A).
+- **Joy-Con (upright):** a single right Joy-Con held upright in one hand, its top toward the TV, as in Switch Sports. The screen turns upright, with R and ZR at the top, then +, the buttons, the stick and Home.
+
+Both Wii Remotes are for Wii games in Dolphin (see below), and you can switch between them mid-game, for example between Wii Party's minigames. The Joy-Cons are for Switch games in [Eden](#eden-switch). All four need the Mac app from the same version: an older Mac app ignores the phone while it sends motion.
 
 ### Changing the controller layout
 
@@ -103,9 +106,28 @@ The **Classic Controller** profiles match buttons by name: A, B, X, Y; LB/RB are
 
 In Input settings, choose the **DSUController** API, point it at `127.0.0.1`, port `26760`, and pick the controller for each player. Cemu reads the same DSU data as Dolphin.
 
+### Eden (Switch)
+
+[Eden](https://eden-emu.dev) reads the phone as a full DSU controller: every button, both sticks, and the phone's tilt from the Wii Remote layouts. For Switch games, use the phone's Classic Controller layout.
+
+1. Quit Eden, then click **Set Up Eden** in the Mac menu. It turns on Eden's DSU controller (Eden calls it the UDP controller) for MobiPad's server, which Eden already lists by default, and adds two controller profiles for each player: a Pro Controller ("MobiPad Player 1" to 4) and a right Joy-Con ("MobiPad Joy-Con Player 1" to 4). It doesn't change your current controller settings. If Eden's settings have to change while Eden is open, it asks you to quit Eden first, because Eden overwrites its settings when it quits.
+2. In Eden's settings, open **Controls**. For Player 1, choose the profile **MobiPad Player 1** and click **Load**. For more players, connect Player 2 and load **MobiPad Player 2**, and so on.
+3. For the phone's Joy-Con layouts, load **MobiPad Joy-Con Player 1** instead, and check that Player 1's controller type is now **Right Joycon**. One profile serves both ways of holding it: the game decides whether a single Joy-Con is sideways or upright, as on a real Switch.
+
+The profiles are Eden's own automatic mapping for a DSU controller. Like a Switch controller, it goes by position, so the letters differ from the phone's:
+
+| Phone | Switch | | Phone | Switch |
+|---|---|---|---|---|
+| A (bottom) | B | | LB / RB | L / R |
+| B (right) | A | | LT / RT | ZL / ZR |
+| X (left) | Y | | View / Menu | − / + |
+| Y (top) | X | | Home | Home |
+
+The sticks, the D-pad, L3 and R3 map directly. The Joy-Con profiles map the phone's Joy-Con buttons to the Joy-Con's own, letter for letter. Eden keeps its settings in `~/.config/eden`, and the profiles in its `input` folder.
+
 ### Ryujinx
 
-Ryujinx can't read DSU input (see the research doc), so MobiPad sends Player 1 as key presses:
+For Switch games, Eden (above) gets the whole controller. Ryujinx, and Ryubing, which carries it on, can't read DSU input (see the research doc), so MobiPad sends Player 1 as key presses:
 
 1. In the Mac menu, turn on **Player 1 as keyboard**. The first time, macOS asks you to allow MobiPad under Privacy & Security → Accessibility. Do that, then turn the toggle on again.
 2. In Ryujinx, use the keyboard as Player 1's input device. MobiPad presses Ryujinx's default keys, matched by button position:
@@ -180,12 +202,14 @@ Covered by the package tests (`swift test`):
 - **Streaming input (FR-06, NFR-01):** full snapshots on every change, resent every 50 ms, and old packets dropped.
 - **Up to four players (FR-10)**, each keeping their player number across dropouts.
 - **Automatic reconnect (FR-09)** and **latency (DR-03)**.
-- **DSU for Dolphin and Cemu**, and **keyboard key mapping for Ryujinx**.
+- **DSU for Dolphin, Cemu and Eden**, and **keyboard key mapping for Ryujinx**.
 - **Test controller in the Mac menu.**
 - **Set Up Dolphin (UX-01):** the DSU server entry and the GameCube, Wii Remote and Classic Controller profiles, with their key and input names checked against Dolphin's source.
+- **Set Up Eden:** turning on the UDP controller, the server list, and the Pro Controller and Joy-Con profiles, checked against Eden's key names and its own automatic mapping.
+- **Joy-Con motion:** the sideways turn into the Joy-Con's axes.
 - **Motion (both Wii Remotes):** the motion in the wire format, turning Core Motion readings into the controller's axes, the sideways turn (checked against Dolphin's own Sideways option), and the DSU motion fields as Dolphin reads them.
 
-Not tried yet: Cemu, Ryujinx with keyboard output, four players at once, haptics, the wider touch area around buttons (so a thumb partly on 2 still accelerates), moving and resizing controls by touch, and latency figures on a real network.
+Not tried yet: Cemu, Eden and the Joy-Con layouts (button letters and tilt in Switch games), Ryujinx with keyboard output, four players at once, haptics, the wider touch area around buttons (so a thumb partly on 2 still accelerates), moving and resizing controls by touch, and latency figures on a real network.
 
 How the motion controls were built and tested, with the measurements behind the choices: [TILT_NOTES.md](TILT_NOTES.md).
 
@@ -193,4 +217,4 @@ How the motion controls were built and tested, with the measurements behind the 
 
 MIT; see [LICENSE](LICENSE).
 
-MobiPad isn't affiliated with or endorsed by Nintendo, Sony, Microsoft, Apple, or the Dolphin, Cemu or Ryujinx projects. Wii, GameCube and Mario Kart are trademarks of Nintendo, PlayStation of Sony, and Xbox of Microsoft. They're named here only to describe what MobiPad works with.
+MobiPad isn't affiliated with or endorsed by Nintendo, Sony, Microsoft, Apple, or the Dolphin, Cemu, Eden or Ryujinx projects. Wii, GameCube, Switch and Mario Kart are trademarks of Nintendo, PlayStation of Sony, and Xbox of Microsoft. They're named here only to describe what MobiPad works with.

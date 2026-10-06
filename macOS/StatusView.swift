@@ -24,6 +24,7 @@ struct StatusView: View {
             Divider()
             serviceStatus
             dolphinSettings
+            edenSettings
             Divider()
             testPlayerSettings
             Divider()
@@ -67,6 +68,30 @@ struct StatusView: View {
                     .foregroundStyle(.orange)
             case .failure(let error):
                 Text("Couldn’t set up Dolphin: \(error.localizedDescription)")
+                    .foregroundStyle(.red)
+            }
+        }
+        .font(.caption)
+    }
+
+    @ViewBuilder private var edenSettings: some View {
+        Button("Set Up Eden") { model.setUpEden() }
+        Group {
+            switch model.edenSetup {
+            case nil:
+                Text("Turns on Eden’s DSU controller, with a controller profile for each player.")
+                    .foregroundStyle(.secondary)
+            case .success(.installed):
+                Text("Done. In Eden’s settings, open Controls, choose the profile “MobiPad Player 1” for Player 1, and click Load. Player 2 gets “MobiPad Player 2”, and so on; connect those players too. For the phone’s Joy-Con layouts, load “MobiPad Joy-Con Player 1” instead.")
+                    .foregroundStyle(.secondary)
+            case .success(.edenIsRunning):
+                Text("Quit Eden first, because it overwrites its settings when it quits. Then click Set Up Eden again.")
+                    .foregroundStyle(.orange)
+            case .success(.edenNotFound):
+                Text("Eden’s settings weren’t found. Open Eden once, quit it, and try again.")
+                    .foregroundStyle(.orange)
+            case .failure(let error):
+                Text("Couldn’t set up Eden: \(error.localizedDescription)")
                     .foregroundStyle(.red)
             }
         }
