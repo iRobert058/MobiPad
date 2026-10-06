@@ -19,6 +19,7 @@ struct CompanionApp: App {
 
 /// Phones connect to `host`; every state it receives goes straight to the DSU server, where
 /// emulators such as Dolphin and Cemu pick it up, and optionally to the keyboard (Player 1 only).
+/// Rumble goes the other way: from an emulator, through the DSU server and `host`, to the phone.
 @MainActor @Observable
 final class CompanionModel {
     enum ServiceStatus: Equatable {
@@ -47,7 +48,10 @@ final class CompanionModel {
     private static let approvedPhonesKey = "approvedPhones"
 
     init() {
-        let dsuServer = DSUServer()
+        let rumbleRelay = RumbleRelay()
+        let dsuServer = DSUServer { slot, intensity in
+            rumbleRelay.host?.rumble(slot: slot, intensity: intensity)
+        }
         let keyboard = KeyboardOutput()
         let relay = ApprovalRelay()
         let approvedPhones = UserDefaults.standard.dictionary(forKey: Self.approvedPhonesKey) as? [String: String] ?? [:]
@@ -67,6 +71,7 @@ final class CompanionModel {
             }
         }
         relay.model = self
+        rumbleRelay.host = host
         Task { await start() }
     }
 
@@ -152,4 +157,10 @@ final class CompanionModel {
 @MainActor
 private final class ApprovalRelay {
     weak var model: CompanionModel?
+}
+
+/// Lets the DSU server's rumble reach the host, which doesn't exist yet when the server is created.
+/// Set once, before the server starts.
+private final class RumbleRelay: @unchecked Sendable {
+    weak var host: ControllerHost?
 }

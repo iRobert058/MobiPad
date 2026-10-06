@@ -32,6 +32,8 @@ final class AppModel {
 
     private var browser: MacBrowser?
     private var link: ControllerLink?
+    /// Plays the game's rumble, which the link reports.
+    @ObservationIgnored private let rumbleMotor = RumbleMotor()
     /// The buttons and sticks last sent, so tilt can be sent along with them.
     @ObservationIgnored private var lastState = ControllerState()
     /// The phone's tilt in the Wii Remote layout. Nil otherwise.
@@ -95,6 +97,8 @@ final class AppModel {
                 guard let self, self.linkToken == token else { return }
                 self.status = status
             }
+        } onRumble: { [rumbleMotor] intensity in
+            rumbleMotor.set(intensity)
         }
         self.link = link
         connectedMac = mac
