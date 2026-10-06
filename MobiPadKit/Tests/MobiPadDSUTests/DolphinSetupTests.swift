@@ -94,8 +94,8 @@ struct DolphinSetupTests {
             .filter { !$0.offset.isMultiple(of: 2) }
             .map { String($0.element) }
 
-        #expect(used.count == 22)
-        #expect(Set(used).isSubset(of: dolphinInputs))
+        #expect(used.count == 23)
+        #expect(Set(used).isSubset(of: dolphinInputs.union(Self.dsuOutputs)))
         #expect(profile.contains("Buttons/A = `Cross`\n"))
         #expect(profile.contains("Main Stick/Calibration = 100.00\n"))
     }
@@ -109,12 +109,16 @@ struct DolphinSetupTests {
         "Gyro Pitch Up", "Gyro Pitch Down", "Gyro Roll Left", "Gyro Roll Right", "Gyro Yaw Left", "Gyro Yaw Right",
     ]
 
+    /// The output MobiPad's Dolphin change adds to the DSU client, named like SDL's single motor.
+    /// Stock Dolphin has none.
+    static let dsuOutputs: Set<String> = ["Motor"]
+
     /// Profile keys of an emulated Wii Remote, from Dolphin's WiimoteEmu.h/.cpp (the pointer group is
     /// "IMUIR"), IMUAccelerometer.cpp, IMUGyroscope.cpp, IMUCursor.cpp and Extension/Classic.h. A
     /// misspelled key would be silently ignored.
     static let wiimoteKeys: Set<String> = {
         var keys: Set<String> = ["Device", "Extension", "Options/Sideways Wiimote", "Options/Upright Wiimote", "IMUIR/Recenter",
-                                   "IMUGyroscope/Calibration Period", "IMUIR/Accelerometer Influence"]
+                                   "IMUGyroscope/Calibration Period", "IMUIR/Accelerometer Influence", "Rumble/Motor"]
         for button in ["A", "B", "1", "2", "-", "+", "Home"] { keys.insert("Buttons/\(button)") }
         for direction in ["Up", "Down", "Left", "Right"] {
             keys.insert("D-Pad/\(direction)")
@@ -151,8 +155,8 @@ struct DolphinSetupTests {
         let settings = Self.settings(DolphinSetup.wiiRemoteProfile(slot: 0, serverName: "MobiPad"))
 
         #expect(Set(settings.keys).isSubset(of: Self.wiimoteKeys))
-        #expect(Set(settings.values.compactMap(Self.input)).isSubset(of: Self.dsuInputs))
-        #expect(settings.values.compactMap(Self.input).count == 24)
+        #expect(Set(settings.values.compactMap(Self.input)).isSubset(of: Self.dsuInputs.union(Self.dsuOutputs)))
+        #expect(settings.values.compactMap(Self.input).count == 25)
         // The phone's Center button recenters Dolphin's pointer.
         #expect(settings["IMUIR/Recenter"] == "`R3`")
         // iOS already calibrates the gyroscope; Dolphin's own calibration made the pointer drift.
@@ -179,11 +183,18 @@ struct DolphinSetupTests {
         let settings = Self.settings(DolphinSetup.classicControllerProfile(slot: 0, serverName: "MobiPad"))
 
         #expect(Set(settings.keys).isSubset(of: Self.wiimoteKeys))
-        #expect(Set(settings.values.compactMap(Self.input)).isSubset(of: Self.dsuInputs))
-        #expect(settings.values.compactMap(Self.input).count == 25)
+        #expect(Set(settings.values.compactMap(Self.input)).isSubset(of: Self.dsuInputs.union(Self.dsuOutputs)))
+        #expect(settings.values.compactMap(Self.input).count == 26)
         #expect(settings["Extension"] == "Classic")
         // No motion: the Classic Controller layout doesn't tilt.
         #expect(!settings.keys.contains { $0.hasPrefix("IMU") })
+    }
+
+    /// Rumble/Motor is the key in both GCPadEmu.cpp and WiimoteEmu.cpp.
+    @Test func everyProfileRumblesThePhone() {
+        for kind in DolphinSetup.ProfileKind.allCases {
+            #expect(Self.settings(kind.profile(slot: 0, serverName: "MobiPad"))["Rumble/Motor"] == "`Motor`")
+        }
     }
 
     @Test func iniEditsKeepLayoutAndIgnoreKeyCase() {

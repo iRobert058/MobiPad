@@ -6,6 +6,10 @@ import Foundation
 /// players load in Dolphin's controller settings: a GameCube controller ("MobiPad Player 1" to 4), and
 /// for Wii games a Wii Remote with tilt ("MobiPad Wii Remote Player 1" to 4) and a Classic Controller
 /// ("MobiPad Classic Player 1" to 4). It never changes a port's current mapping.
+///
+/// Every profile sends the game's rumble to the DSU controller's `Motor` output, which the phone plays.
+/// Stock Dolphin's DSU client has no outputs, so there the mapping does nothing until Dolphin learns
+/// DSU rumble (see the README).
 public enum DolphinSetup {
     public enum Outcome: Equatable, Sendable {
         case installed(profileNames: [String])
@@ -152,6 +156,7 @@ public enum DolphinSetup {
         IMUIR/Accelerometer Influence = 0
         Options/Sideways Wiimote = False
         Extension = None
+        Rumble/Motor = `Motor`
 
         """
     }
@@ -191,6 +196,7 @@ public enum DolphinSetup {
         Classic/D-Pad/Down = `Pad S`
         Classic/D-Pad/Left = `Pad W`
         Classic/D-Pad/Right = `Pad E`
+        Rumble/Motor = `Motor`
 
         """
     }
@@ -231,6 +237,7 @@ public enum DolphinSetup {
         D-Pad/Down = `Pad S`
         D-Pad/Left = `Pad W`
         D-Pad/Right = `Pad E`
+        Rumble/Motor = `Motor`
 
         """
     }
