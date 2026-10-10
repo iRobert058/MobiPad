@@ -1,6 +1,6 @@
 # Research: the Wii U GamePad in MobiPad
 
-*Status: researched, not started. Last updated 2026-10-10.*
+*Status: measuring the stream's delay (step 1, branch `wii-u-gamepad`). Last updated 2026-10-10.*
 
 ## Summary
 
@@ -61,6 +61,27 @@ Pipeline: Cemu's GamePad window → capture on the Mac → hardware encode → W
 - **Network.** Same as the controls: client isolation (the UU Wi-Fi) blocks it, a home network or the iPhone's Personal Hotspot works. A video stream needs much more bandwidth than input (*inferred*: a few Mbit/s).
 - **Battery and heat** on the phone from constant decoding and a bright screen (*inferred*).
 - **Size.** Level 2 touches both apps, the protocol and a new Mac permission. It's a large task in the sense of the global instructions: several sessions, with progress notes.
+
+### Measuring the delay
+
+`tools/StreamProbe` streams a picture to the phone and measures the delay as a loop on the Mac's clock. A square in the corner of the picture switches between black and white. The phone decodes each frame, and when it sees the square switch it tells the Mac. The time from the switch to that message is one sample. That covers capture (with `--source window`), encoding, Wi-Fi both ways and decoding. It misses the phone's display, which adds up to one refresh (8 ms at 120 Hz, 17 ms at 60 Hz), and includes the phone's reply, which a real stream doesn't need, so the two roughly cancel out (*inferred*).
+
+On one Mac (2026-10-10, generated picture at 854 × 480 and 60 fps), without Wi-Fi:
+
+| Where the phone runs  | Median | p90    | p99     | Lost frames |
+|-----------------------|--------|--------|---------|-------------|
+| StreamProbe `--phone` | 6.9 ms | 8.2 ms | 8.5 ms  | 0 of 1,737  |
+| iPhone Simulator      | 5.8 ms | 8.1 ms | 12.7 ms | 0 of 1,677  |
+
+Encoding takes about 2–4 ms and decoding about 1 ms. Keyframes are about 40–48 KB (up to 60 datagrams), other frames about 2.5 KB. The generated picture is simpler than a game, so a game will use more of the 6 Mbit/s (*inferred*).
+
+To measure on the iPhone:
+
+1. Put the Mac and the iPhone on a home network or the iPhone's Personal Hotspot (not eduroam: it blocks devices from reaching each other).
+2. On the Mac: `swift run -c release --package-path tools/StreamProbe StreamProbe`
+3. Run the iPhone app from Xcode (a debug build), and on the start screen tap the video button in the toolbar (Stream Test), then the Mac.
+4. Keep the phone on that screen. The Mac prints the delay every 5 seconds and a result after 300 samples (Ctrl-C stops early).
+5. Optional: `--source window` captures a window of the tool's own, as Cemu's window would be captured. `--capture "GamePad"` streams Cemu's GamePad window, to see how a game feels (no measurement). Both need Screen Recording permission for the terminal app.
 
 ## Not feasible
 

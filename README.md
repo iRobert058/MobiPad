@@ -31,11 +31,13 @@ MobiPadKit/            Swift package with all the logic, testable without Xcode
   MobiPadNetwork       phone side (ControllerLink, MacBrowser) and Mac side (ControllerHost)
   MobiPadDSU           DSU server that Dolphin and Cemu connect to
   MobiPadKeyboard      Player 1 as key presses, for Ryujinx
+  MobiPadVideo         H.264 video split into datagrams, for the Wii U GamePad screen (in progress)
 iOS/                   iPhone app: name, find a Mac, then the controller
 macOS/                 Mac menu bar app: approvals, player slots, latency, live input
 Shared/AppIcon.icon    app icon for both apps, with light, dark and clear/tinted versions; open it in Icon Composer (comes with Xcode) to edit
 Shared/mobipad-app-icon/  the icon's source layers per mode, alternatives and previews
 docs/research/         technical research and decisions
+tools/StreamProbe/     development tool: measures the delay of streaming a picture to the phone
 project.yml            XcodeGen spec that generates MobiPad.xcodeproj
 ```
 
@@ -176,6 +178,7 @@ The tests include real UDP round-trips on localhost:
 - an impostor with a copied public key
 - a button press travelling all the way to a Dolphin-style DSU client
 - tilt from the phone reaching that client as DSU motion
+- the Mac's hardware H.264 encoder and decoder, with a marker that survives compression, and frames that survive lost and reordered datagrams
 
 With only the Command Line Tools installed (no Xcode), point `swift test` at Swift Testing:
 
