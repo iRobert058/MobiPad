@@ -5,6 +5,9 @@ import SwiftUI
 /// Asks for the player's name and lists the Macs running MobiPad on this network (FR-01).
 struct MacPickerView: View {
     @Bindable var model: AppModel
+    #if DEBUG
+    @State private var showsStreamTest = StreamTestView.opensAtLaunch
+    #endif
 
     var body: some View {
         NavigationStack {
@@ -60,8 +63,18 @@ struct MacPickerView: View {
                 } label: {
                     Label("Appearance", systemImage: "circle.lefthalf.filled")
                 }
+                #if DEBUG
+                Button {
+                    showsStreamTest = true
+                } label: {
+                    Label("Stream Test", systemImage: "video")
+                }
+                #endif
             }
         }
+        #if DEBUG
+        .fullScreenCover(isPresented: $showsStreamTest) { StreamTestView() }
+        #endif
         .onAppear { model.startBrowsing() }
     }
 }

@@ -12,6 +12,8 @@ public final class ProbeClient: @unchecked Sendable {
         public var framesDecoded = 0
         public var framesLost = 0
         public var lastError: String?
+
+        public init() {}
     }
 
     private let log = Logger(subsystem: "MobiPad", category: "probe")

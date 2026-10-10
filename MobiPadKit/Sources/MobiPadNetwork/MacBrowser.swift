@@ -10,10 +10,13 @@ public final class MacBrowser: @unchecked Sendable {
         public var id: String { name }
     }
 
-    private let browser = NWBrowser(for: .bonjour(type: MobiPadService.bonjourType, domain: nil), using: .udp)
+    private let browser: NWBrowser
 
-    /// - Parameter onChange: called on the main queue with the current list, sorted by name.
-    public init(onChange: @escaping @Sendable ([Mac]) -> Void) {
+    /// - Parameters:
+    ///   - type: the Bonjour service type; another one only for development tools such as the stream probe.
+    ///   - onChange: called on the main queue with the current list, sorted by name.
+    public init(type: String = MobiPadService.bonjourType, onChange: @escaping @Sendable ([Mac]) -> Void) {
+        browser = NWBrowser(for: .bonjour(type: type, domain: nil), using: .udp)
         browser.browseResultsChangedHandler = { results, _ in
             let macs = results.compactMap { result -> Mac? in
                 guard case .service(let name, _, _, _) = result.endpoint else { return nil }
