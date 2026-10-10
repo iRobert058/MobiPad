@@ -77,11 +77,11 @@ Encoding takes about 2–4 ms and decoding about 1 ms. Keyframes are about 40–
 
 To measure on the iPhone:
 
-1. Put the Mac and the iPhone on a home network or the iPhone's Personal Hotspot (not eduroam: it blocks devices from reaching each other).
+1. Put the Mac and the iPhone on a home network or the iPhone's Personal Hotspot (not the UU Wi-Fi: it blocks devices from reaching each other).
 2. On the Mac: `swift run -c release --package-path tools/StreamProbe StreamProbe`
 3. Run the iPhone app from Xcode (a debug build), and on the start screen tap the video button in the toolbar (Stream Test), then the Mac.
 4. Keep the phone on that screen. The Mac prints the delay every 5 seconds and a result after 300 samples (Ctrl-C stops early).
-5. Optional: `--source window` captures a window of the tool's own, as Cemu's window would be captured. `--capture "GamePad"` streams Cemu's GamePad window, to see how a game feels (no measurement). Both need Screen Recording permission for the terminal app.
+5. Optional: `--source window` captures a window of the tool's own, as Cemu's window would be captured. `--capture "GamePad"` streams Cemu's GamePad window (its exact title is unverified; the tool lists the windows it can see), to see how a game feels (no measurement). Both need Screen Recording permission for the terminal app.
 
 ## Not feasible
 
