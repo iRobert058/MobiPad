@@ -27,7 +27,7 @@ public final class VideoDecoder {
         }
     }
 
-    /// The decoded picture in NV12 (`420v`), which ``LumaProbe`` reads and the display layer shows.
+    /// The decoded picture in NV12 (`420v`), which ``LatencyMarker`` reads and the display layer shows.
     public func decode(_ frame: EncodedFrame) throws(DecoderError) -> CVPixelBuffer {
         if frame.isKeyframe, frame.parameterSets != parameterSets {
             try makeSession(parameterSets: frame.parameterSets)
@@ -42,9 +42,23 @@ public final class VideoDecoder {
         ) { status, _, imageBuffer, _, _ in
             result.value = if status == noErr, let imageBuffer { .success(imageBuffer) } else { .failure(.couldNotDecode(status)) }
         }
-        guard status == noErr else { throw .couldNotDecode(status) }
-        guard let value = result.value else { throw .couldNotDecode(status) }
-        return try value.get()
+        guard status == noErr, case .success(let picture)? = result.value else {
+            // Also after the system invalidated the session, as iOS does in the background: start over
+            // at the next keyframe, even if its parameter sets are the same.
+            reset()
+            if status == noErr, case .failure(let error)? = result.value { throw error }
+            throw .couldNotDecode(status)
+        }
+        return picture
+    }
+
+    private func reset() {
+        if let session {
+            VTDecompressionSessionInvalidate(session)
+        }
+        session = nil
+        format = nil
+        parameterSets = []
     }
 
     private func makeSession(parameterSets: [Data]) throws(DecoderError) {

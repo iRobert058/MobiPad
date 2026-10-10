@@ -155,7 +155,7 @@ struct CodecTests {
     /// Encodes the test pattern with the marker switching, and returns the compressed frames.
     private func encode(markers: [Bool], keyframeAt: Set<Int> = []) async throws -> [EncodedFrame] {
         let collected = Collected()
-        let encoder = try VideoEncoder { result in
+        let encoder = try VideoEncoder { _, result in
             collected.lock.withLock {
                 switch result {
                 case .success(let frame): collected.frames.append(frame)

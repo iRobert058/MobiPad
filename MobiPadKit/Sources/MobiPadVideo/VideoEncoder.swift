@@ -23,9 +23,10 @@ public final class VideoEncoder: @unchecked Sendable {
         case unreadableOutput
     }
 
-    /// Called on VideoToolbox's thread with each compressed frame, or the error for a frame that failed.
-    /// The encoder may also drop a frame on its own to keep the bit rate; then there's no call.
-    public typealias Output = @Sendable (Result<EncodedFrame, EncoderError>) -> Void
+    /// Called on VideoToolbox's thread with each compressed frame, or the error for a frame that failed,
+    /// along with the time passed to ``encode(_:time:forceKeyframe:)``. The encoder may also drop a frame
+    /// on its own to keep the bit rate; then there's no call.
+    public typealias Output = @Sendable (_ time: CMTime, _ result: Result<EncodedFrame, EncoderError>) -> Void
 
     public let settings: Settings
     private let session: VTCompressionSession
@@ -83,13 +84,13 @@ public final class VideoEncoder: @unchecked Sendable {
             infoFlagsOut: nil
         ) { status, infoFlags, sampleBuffer in
             if status != noErr {
-                output(.failure(.couldNotEncode(status)))
+                output(time, .failure(.couldNotEncode(status)))
             } else if infoFlags.contains(.frameDropped) || sampleBuffer == nil {
                 return
             } else if let frame = EncodedFrame(sampleBuffer!) {
-                output(.success(frame))
+                output(time, .success(frame))
             } else {
-                output(.failure(.unreadableOutput))
+                output(time, .failure(.unreadableOutput))
             }
         }
         guard status == noErr else { throw .couldNotEncode(status) }

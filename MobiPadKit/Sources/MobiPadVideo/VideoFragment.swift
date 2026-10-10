@@ -131,6 +131,11 @@ public struct VideoReceiver: Sendable {
         return Output(frame: needsKeyframe ? nil : encoded, wantsKeyframe: needsKeyframe)
     }
 
+    /// Skips frames until the next keyframe, for when one couldn't be decoded.
+    public mutating func requireKeyframe() {
+        needsKeyframe = true
+    }
+
     /// Wrap-around comparison of frame numbers, as for the controller's sequence numbers.
     static func isFrame(_ frame: UInt32, newerThan other: UInt32) -> Bool {
         let distance = frame &- other
