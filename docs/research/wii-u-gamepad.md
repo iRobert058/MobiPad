@@ -32,7 +32,7 @@ The real GamePad screen is resistive and single-touch, so one touch point is eno
 - **Motion:** already sent over DSU. Cemu's `VPADController::update_motion` uses it, which covers gyro aiming (Splatoon, Breath of the Wild). The axes need checking for a phone held like a GamePad.
 - **Wire format:** an optional touch point in `ControllerState` (normalized x and y, or nothing). Phone and Mac change in the same commit. An older Mac app should ignore it, as with motion.
 - **DSU:** the Mac fills `tpad1` with `active = 1`, a touch index that goes up for each new touch, `x = u * 1920` and `y = v * 942`. Send touch only for the GamePad kind: Dolphin and Eden also read DSU touch (Eden passes it on as the Switch touchscreen), and the other layouts shouldn't start sending it by accident. `active` must drop to 0 on lift, or Cemu keeps touching and ignores the mouse.
-- **Optionally "Set Up Cemu"**, like Set Up Dolphin and Set Up Eden, writing a GamePad profile for the DSU controller. Cemu's profile format and location on macOS haven't been checked yet.
+- **Optionally "Set Up Cemu"**, like Set Up Dolphin and Set Up Eden. Cemu on macOS keeps one profile per player in `~/Library/Application Support/Cemu/controllerProfiles/controller0.xml` … `controller3.xml` (`InputManager.cpp`): an `emulated_controller` with a `type` ("Wii U GamePad", "Wii U Pro Controller"), and a `controller` with `api` `DSUController`, `uuid` = the DSU pad, `ip`, `port`, `motion` and `mappings`. Each mapping entry pairs the emulated controller's button id (the `ButtonId` enum in `VPADController.h` or `ProController.h`, counted from 1) with a DSU input id (`Buttons2` in `Controller.h`: bit *n* of the two DSU bitmask bytes is button *n*, and the stick axes start at 38). Cemu doesn't read the DSU PS byte, so Home can't be mapped. Profiles like these were written by hand on 2026-10-10 and Cemu loaded them and asked the DSU server for pad data.
 
 Without the picture on the phone, level 1 suits menus and large buttons, with Cemu's GamePad view open on the Mac (Separate GamePad View, or both screens in one window). Precise touch (drawing, picking a spot on a map) needs level 2.
 
@@ -70,7 +70,7 @@ Pipeline: Cemu's GamePad window → capture on the Mac → hardware encode → W
 ## Open questions
 
 1. Does Cemu work with MobiPad at all on this Mac (Classic Controller layout over DSU)? Not tried yet.
-2. Cemu's controller profile format and location on macOS, for a possible Set Up Cemu.
+2. ~~Cemu's controller profile format and location on macOS?~~ Answered under level 1.
 3. Which games to target, so the touch and gyro needs are concrete.
 4. Glass-to-glass latency of a capture-and-stream prototype.
 
