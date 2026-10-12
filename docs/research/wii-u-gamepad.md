@@ -1,6 +1,6 @@
 # Research: the Wii U GamePad in MobiPad
 
-*Status: level 1 built (branch `wii-u-gamepad`): the GamePad layout, touch over DSU and Set Up Cemu; not yet tried in Cemu. Level 2 next. Last updated 2026-10-12.*
+*Status: levels 1 and 2 built (branch `wii-u-gamepad`). Level 1 works in Cemu (2026-10-12). Level 2 works with a test picture in the Simulator; not yet tried with Cemu's real window. Last updated 2026-10-12.*
 
 ## Summary
 
@@ -68,6 +68,12 @@ Pipeline: Cemu's GamePad window → capture on the Mac → hardware encode → W
 - **Network.** Same as the controls: client isolation (the UU Wi-Fi) blocks it, a home network or the iPhone's Personal Hotspot works. A video stream needs much more bandwidth than input (*inferred*: a few Mbit/s).
 - **Battery and heat** on the phone from constant decoding and a bright screen (*inferred*).
 - **Size.** Level 2 touches both apps, the protocol and a new Mac permission. It's a large task in the sense of the global instructions: several sessions, with progress notes.
+
+### As built (2026-10-12)
+
+- **Messages:** three sealed `SessionMessage`s: `video` (Mac → phone, a `VideoFragment`), `videoRequest` (phone → Mac, every second while the GamePad layout shows its touchscreen, or at once for a keyframe), `videoStatus` (Mac → phone, in answer: streaming, off, no window, no permission). Video uses the session's Mac-to-phone key with random nonces, like everything else. The protocol version stays 3: an older Mac drops the requests, an older phone never asks.
+- **Mac:** `GamePadStreamer` captures only while the menu's switch is on (off by default) and at least one phone has asked in the last 3 seconds. `CemuWindowSource` captures the window owned by `info.cemu.Cemu` whose title starts with "GamePad View", cropped to the middle 16:9 below an assumed 28-point title bar, at 854 × 480 and up to 60 fps. A still screen is re-sent once a second, so a phone that lost a frame notices and asks for a keyframe.
+- **Phone:** `VideoPlayer` decodes on its own queue, so the controller input on the link's queue never waits for video, and an `AVSampleBufferDisplayLayer` shows each picture at once. The touchscreen area is the picture, so a touch lands where it's seen.
 
 ### Measuring the delay
 
