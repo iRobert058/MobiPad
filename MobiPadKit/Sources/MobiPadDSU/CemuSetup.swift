@@ -70,9 +70,12 @@ public enum CemuSetup {
             }
         }
 
-        /// A Wii Remote without a Nunchuk or other extension (`kWAPDevCore`), saved by `WiimoteController::save`.
+        /// A Wii Remote Plus: with MotionPlus, without a Nunchuk (`kWAPDevMPLS` in `WPADController.h`, the
+        /// MotionPlus box in Cemu's input settings). Without MotionPlus, Cemu passes only the accelerometer
+        /// to the game (`WPADController::WPADRead`), and games made for the Wii Remote Plus, like Nintendo
+        /// Land, get no motion.
         var extraSettings: String {
-            self == .wiiRemote ? "\t<device_type>0</device_type>\n" : ""
+            self == .wiiRemote ? "\t<device_type>5</device_type>\n" : ""
         }
 
         func profile(name: String, pad: Int, port: UInt16) -> String {

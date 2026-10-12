@@ -72,11 +72,11 @@ struct CemuSetupTests {
     }
 
     /// The phone's Wii Remote buttons (A as Cross, B as Circle, 1 as Square, 2 as Triangle) on Cemu's Wii Remote.
-    @Test func writesAWiiRemoteWithoutExtension() throws {
+    @Test func writesAWiiRemotePlus() throws {
         _ = try CemuSetup.install(configDirectory: config)
         let remote = try profile("MobiPad Wii Remote Player 3")
         #expect(try value("type", in: remote) == "Wiimote")
-        #expect(try value("device_type", in: remote) == "0")
+        #expect(try value("device_type", in: remote) == "5") // with MotionPlus, without a Nunchuk
         #expect(try value("controller/uuid", in: remote) == "2")
         #expect(try value("controller/motion", in: remote) == "true")
         #expect(try mappings(in: remote) == [
