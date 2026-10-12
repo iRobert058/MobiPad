@@ -243,3 +243,25 @@ struct GamePadStreamerTests {
         try await Self.waitUntil { (try? Self.decodedFrames(outbox.fragments(1))) ?? 0 >= 1 }
     }
 }
+
+struct CemuWindowSourceTests {
+    @Test func findsOnlyCemusGamePadWindow() {
+        #expect(CemuWindowSource.isGamePadWindow(bundleIdentifier: "info.cemu.Cemu", title: "GamePad View"))
+        #expect(CemuWindowSource.isGamePadWindow(bundleIdentifier: "info.cemu.Cemu", title: "GamePad View - FPS: 59.94"))
+        // Cemu's main window shows the TV picture.
+        #expect(!CemuWindowSource.isGamePadWindow(bundleIdentifier: "info.cemu.Cemu", title: "Cemu 2.6 - Nintendo Land"))
+        // Another app's window with the same title.
+        #expect(!CemuWindowSource.isGamePadWindow(bundleIdentifier: "com.apple.Safari", title: "GamePad View"))
+        #expect(!CemuWindowSource.isGamePadWindow(bundleIdentifier: "info.cemu.Cemu", title: nil))
+    }
+
+    @Test func pictureIsTheMiddle16By9BelowTheTitleBar() {
+        // Exactly 16:9 below a 28-point title bar.
+        #expect(CemuWindowSource.pictureRect(inWindowOfSize: CGSize(width: 1_280, height: 748)) == CGRect(x: 0, y: 28, width: 1_280, height: 720))
+        // Too wide: black bars left and right.
+        #expect(CemuWindowSource.pictureRect(inWindowOfSize: CGSize(width: 1_000, height: 388)) == CGRect(x: 180, y: 28, width: 640, height: 360))
+        // Too tall: black bars above and below.
+        let tall = CemuWindowSource.pictureRect(inWindowOfSize: CGSize(width: 640, height: 628))
+        #expect(tall.width == 640 && tall.height == 360 && tall.minY == 28 + 120)
+    }
+}
