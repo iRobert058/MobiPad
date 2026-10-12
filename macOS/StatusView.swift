@@ -80,10 +80,10 @@ struct StatusView: View {
         Group {
             switch model.cemuSetup {
             case nil:
-                Text("Adds controller profiles to Cemu: a Wii U GamePad with touchscreen, and a Pro Controller for each player.")
+                Text("Adds controller profiles to Cemu for each player: a Wii U GamePad with touchscreen, a Pro Controller and a Wii Remote.")
                     .foregroundStyle(.secondary)
             case .success(.installed):
-                Text("Done. In Cemu, open Options → Input settings. For Controller 1, choose the profile “MobiPad GamePad Player 1” and click Load; on the phone, pick the Wii U GamePad layout. Other players load “MobiPad Pro Controller Player 2”, and so on, and use the Classic Controller layout.")
+                Text("Done. In Cemu, open Options → Input settings. For Controller 1, choose the profile “MobiPad GamePad Player 1” and click Load; on the phone, pick the Wii U GamePad layout. Other players load “MobiPad Pro Controller Player 2” (Classic Controller layout) or “MobiPad Wii Remote Player 2” (a Wii Remote layout), and so on.")
                     .foregroundStyle(.secondary)
             case .success(.cemuNotFound):
                 Text("Cemu’s settings weren’t found. Open Cemu once, quit it, and try again.")

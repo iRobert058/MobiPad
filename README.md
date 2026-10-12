@@ -107,11 +107,13 @@ The **Classic Controller** profiles match buttons by name: A, B, X, Y; LB/RB are
 
 ### Cemu (Wii U)
 
-1. In the Mac menu, click **Set Up Cemu**. It adds two profiles for each player: **MobiPad GamePad Player 1** (a Wii U GamePad, for the phone's Wii U GamePad layout) and **MobiPad Pro Controller Player 1** (a Wii U Pro Controller, for the Classic Controller layout), and so on for players 2 to 4. It doesn't change your current controller settings.
-2. In Cemu, open **Options → Input settings**. For **Controller 1**, choose **MobiPad GamePad Player 1** under Profile and click **Load**. For more players, load **MobiPad Pro Controller Player 2** on Controller 2, and so on. Most games use one GamePad; the others play on Pro Controllers or Wii Remotes.
+1. In the Mac menu, click **Set Up Cemu**. It adds three profiles for each player: **MobiPad GamePad Player 1** (a Wii U GamePad, for the phone's Wii U GamePad layout), **MobiPad Pro Controller Player 1** (a Wii U Pro Controller, for the Classic Controller layout) and **MobiPad Wii Remote Player 1** (for either Wii Remote layout), and so on for players 2 to 4. It doesn't change your current controller settings.
+2. In Cemu, open **Options → Input settings**. For **Controller 1**, choose **MobiPad GamePad Player 1** under Profile and click **Load**. For more players, load **MobiPad Pro Controller Player 2** or **MobiPad Wii Remote Player 2** on Controller 2, and so on. Most games use one GamePad; the others play on Pro Controllers or Wii Remotes.
 3. To see the GamePad's screen while you tap the phone, turn on **Options → Separate GamePad view** in Cemu.
 
 The profiles map the buttons by position, as on a Wii U: on the phone's Classic Controller layout, the right face button (B) is the Wii U's A and the bottom one (A) is its B, and LT/RT are ZL/ZR. Cemu doesn't read Home over DSU, so it has no mapping, and the GamePad layout starts with Home hidden. While the phone touches the touchscreen, Cemu ignores mouse clicks on the GamePad view.
+
+The **Wii Remote** profile takes the phone's Wii Remote buttons as they are (A, B, 1, 2, −, + and the D-pad) and its motion. Cemu reads a Wii Remote's pointer as a position rather than working it out from the motion, as Dolphin does, so in the pointing layout the phone works out where it points from its gyroscope and sends that: turn the phone to move the pointer, and tap **Center** while aiming at the middle of the TV to recenter it. Turning about 25° moves the pointer across the whole screen. The sideways layout sends no pointer.
 
 **By hand:** in Input settings, choose the **DSUController** API, point it at `127.0.0.1`, port `26760`, and pick the controller for each player. Cemu reads the same DSU data as Dolphin.
 
@@ -220,7 +222,8 @@ Covered by the package tests (`swift test`):
 - **Set Up Eden:** turning on the UDP controller, the server list, and the Pro Controller and Joy-Con profiles, checked against Eden's key names and its own automatic mapping.
 - **Joy-Con motion:** the sideways turn into the Joy-Con's axes.
 - **Wii U GamePad touch:** the touch point in the wire format, and as the DSU touch point Cemu reads, from a phone all the way to a DSU client.
-- **Set Up Cemu:** the GamePad and Pro Controller profiles, with the same mappings as profiles Cemu loaded.
+- **Set Up Cemu:** the GamePad, Pro Controller and Wii Remote profiles, the first two with the same mappings as profiles Cemu loaded.
+- **The pointer for Cemu's Wii Remote:** turning left and lifting the phone move it left and up, around the room's axes however the phone is tilted, and it stays on screen.
 - **The stream for the GamePad screen (in progress):** H.264 through the Mac's hardware encoder and decoder, split into datagrams, and recovering from lost ones.
 - **Motion (both Wii Remotes):** the motion in the wire format, turning Core Motion readings into the controller's axes, the sideways turn (checked against Dolphin's own Sideways option), and the DSU motion fields as Dolphin reads them.
 

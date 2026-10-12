@@ -36,6 +36,9 @@ final class AppModel {
     @ObservationIgnored private var lastState = ControllerState()
     /// The phone's tilt in the Wii Remote layout. Nil otherwise.
     @ObservationIgnored private var motion: ControllerState.Motion?
+    /// Where the pointing Wii Remote points, for Cemu, which takes the pointer as a position.
+    @ObservationIgnored private var pointer = PointerTracker()
+    @ObservationIgnored private var lastMotionAt: ContinuousClock.Instant?
     /// Ignores status updates from a link that has since been replaced.
     private var linkToken = UUID()
 
@@ -123,12 +126,25 @@ final class AppModel {
     }
 
     func send(_ state: ControllerState) {
+        // The pointing Wii Remote's Center button (sent as R3, for Dolphin) also recenters the pointer
+        // sent to Cemu.
+        if controllerKind == .wiiPointer, state.buttons.contains(.rightStickPress), !lastState.buttons.contains(.rightStickPress) {
+            pointer.recenter()
+        }
         lastState = state
         sendCurrentState()
     }
 
     /// Sends the phone's tilt with the buttons last sent. Nil stops sending motion.
     func send(motion: ControllerState.Motion?) {
+        let now = ContinuousClock.now
+        if let motion, let lastMotionAt {
+            let elapsed = now - lastMotionAt
+            pointer.update(motion, seconds: Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18)
+        } else {
+            pointer.recenter()
+        }
+        lastMotionAt = motion == nil ? nil : now
         self.motion = motion
         sendCurrentState()
     }
@@ -145,6 +161,12 @@ final class AppModel {
         case .joyConSideways: motion?.turnedLikeSidewaysJoyCon
         // The GamePad is held in landscape like the phone, so the screen's axes are the pad's.
         case .classic, .wiiPointer, .joyConUpright, .wiiUGamePad: motion
+        }
+        // Cemu takes the Wii Remote's pointer from the DSU touch point. Dolphin works it out from the
+        // motion and ignores the touch point unless a profile maps it.
+        if controllerKind == .wiiPointer, motion != nil {
+            let position = pointer.position
+            state.touch = .init(id: 1, normalizedX: position.x, normalizedY: position.y)
         }
         link?.send(state)
     }

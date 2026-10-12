@@ -11,7 +11,9 @@ struct CemuSetupTests {
         try FileManager.default.createDirectory(at: config, withIntermediateDirectories: true)
     }
 
-    static let profileNames = (1...4).map { "MobiPad GamePad Player \($0)" } + (1...4).map { "MobiPad Pro Controller Player \($0)" }
+    static let profileNames = (1...4).map { "MobiPad GamePad Player \($0)" }
+        + (1...4).map { "MobiPad Pro Controller Player \($0)" }
+        + (1...4).map { "MobiPad Wii Remote Player \($0)" }
 
     /// Reads a written profile as XML.
     private func profile(_ name: String) throws -> XMLElement {
@@ -67,6 +69,21 @@ struct CemuSetupTests {
         ]
         #expect(try mappings(in: profile("MobiPad GamePad Player 1")) == acceptedGamePad)
         #expect(try mappings(in: profile("MobiPad Pro Controller Player 1")) == acceptedPro)
+    }
+
+    /// The phone's Wii Remote buttons (A as Cross, B as Circle, 1 as Square, 2 as Triangle) on Cemu's Wii Remote.
+    @Test func writesAWiiRemoteWithoutExtension() throws {
+        _ = try CemuSetup.install(configDirectory: config)
+        let remote = try profile("MobiPad Wii Remote Player 3")
+        #expect(try value("type", in: remote) == "Wiimote")
+        #expect(try value("device_type", in: remote) == "0")
+        #expect(try value("controller/uuid", in: remote) == "2")
+        #expect(try value("controller/motion", in: remote) == "true")
+        #expect(try mappings(in: remote) == [
+            1: 14, 2: 13, 3: 15, 4: 12, // A, B, 1, 2
+            7: 3, 8: 0, // +, −
+            9: 4, 10: 6, 11: 7, 12: 5, // up, down, left, right
+        ])
     }
 
     @Test func leavesThePlayersCurrentMappingAlone() throws {

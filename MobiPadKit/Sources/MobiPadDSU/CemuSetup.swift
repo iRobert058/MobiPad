@@ -3,8 +3,9 @@ import Foundation
 /// Sets Cemu (a Wii U emulator) up for MobiPad, so players don't have to map every button by hand (UX-01).
 ///
 /// Writes controller profiles per player that players load in Cemu's input settings: a Wii U GamePad
-/// ("MobiPad GamePad Player 1" to 4), for the phone's GamePad layout, and a Wii U Pro Controller
-/// ("MobiPad Pro Controller Player 1" to 4), for the Classic Controller layout. It never changes a
+/// ("MobiPad GamePad Player 1" to 4), for the phone's GamePad layout, a Wii U Pro Controller
+/// ("MobiPad Pro Controller Player 1" to 4), for the Classic Controller layout, and a Wii Remote
+/// ("MobiPad Wii Remote Player 1" to 4), for either Wii Remote layout. It never changes a
 /// player's current mapping (`controller0.xml` to `controller3.xml`), so it doesn't matter whether Cemu
 /// is running.
 ///
@@ -42,11 +43,13 @@ public enum CemuSetup {
     enum ProfileKind: CaseIterable {
         case gamePad
         case proController
+        case wiiRemote
 
         func profileName(slot: Int) -> String {
             switch self {
             case .gamePad: "MobiPad GamePad Player \(slot + 1)"
             case .proController: "MobiPad Pro Controller Player \(slot + 1)"
+            case .wiiRemote: "MobiPad Wii Remote Player \(slot + 1)"
             }
         }
 
@@ -55,6 +58,7 @@ public enum CemuSetup {
             switch self {
             case .gamePad: "Wii U GamePad"
             case .proController: "Wii U Pro Controller"
+            case .wiiRemote: "Wiimote"
             }
         }
 
@@ -62,11 +66,17 @@ public enum CemuSetup {
             switch self {
             case .gamePad: gamePadMappings.map { ($0.button.rawValue, $0.input) }
             case .proController: proControllerMappings.map { ($0.button.rawValue, $0.input) }
+            case .wiiRemote: wiiRemoteMappings.map { ($0.button.rawValue, $0.input) }
             }
         }
 
+        /// A Wii Remote without a Nunchuk or other extension (`kWAPDevCore`), saved by `WiimoteController::save`.
+        var extraSettings: String {
+            self == .wiiRemote ? "\t<device_type>0</device_type>\n" : ""
+        }
+
         func profile(name: String, pad: Int, port: UInt16) -> String {
-            CemuSetup.profile(name: name, type: typeName, pad: pad, port: port, mappings: mappings)
+            CemuSetup.profile(name: name, type: typeName, extraSettings: extraSettings, pad: pad, port: port, mappings: mappings)
         }
     }
 
@@ -91,6 +101,21 @@ public enum CemuSetup {
         case stickLUp, stickLDown, stickLLeft, stickLRight, stickRUp, stickRDown, stickRLeft, stickRRight
     }
 
+    /// The Wii Remote's buttons (`WiimoteController::ButtonId`), counted from 1.
+    enum WiiRemoteButton: Int {
+        case a = 1, b, one, two, nunchukZ, nunchukC, plus, minus, up, down, left, right
+        case nunchukUp, nunchukDown, nunchukLeft, nunchukRight, home
+    }
+
+    /// The buttons as the phone's Wii Remote layouts send them, the same as for Dolphin: A as Cross, B as
+    /// Circle, 1 as Square, 2 as Triangle, − as Share, + as Options, and the D-pad already turned for
+    /// holding it sideways. Home has no mapping, as Cemu doesn't read it. The pointer needs none either:
+    /// Cemu takes it from the DSU touch point, which the pointing layout fills in.
+    static let wiiRemoteMappings: [(button: WiiRemoteButton, input: DSUInput)] = [
+        (.a, .cross), (.b, .circle), (.one, .square), (.two, .triangle), (.plus, .options), (.minus, .share),
+        (.up, .up), (.down, .down), (.left, .left), (.right, .right),
+    ]
+
     /// By position, as on a Wii U: the right face button is A (the phone's B, sent as Circle) and the
     /// bottom one is B (the phone's A, Cross). Triggers are ZL and ZR. Cemu doesn't read the DSU Home
     /// byte, so Home has no mapping.
@@ -112,7 +137,9 @@ public enum CemuSetup {
 
     /// A profile in the format Cemu saves them in, reading DSU pad `pad` with motion on. The touchscreen
     /// needs no mapping: Cemu takes the GamePad's touch from the DSU touch point on its own.
-    static func profile(name: String, type: String, pad: Int, port: UInt16, mappings: [(button: Int, input: DSUInput)]) -> String {
+    static func profile(
+        name: String, type: String, extraSettings: String = "", pad: Int, port: UInt16, mappings: [(button: Int, input: DSUInput)]
+    ) -> String {
         let entries = mappings.map { mapping in
             """
             \t\t\t<entry>
@@ -130,6 +157,8 @@ public enum CemuSetup {
             <emulated_controller>
             \t<type>\(type)</type>
             \t<profile>\(name)</profile>
+
+            """ + extraSettings + """
             \t<controller>
             \t\t<api>DSUController</api>
             \t\t<uuid>\(pad)</uuid>
