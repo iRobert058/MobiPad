@@ -71,6 +71,12 @@ public final class VideoEncoder: @unchecked Sendable {
         VTCompressionSessionInvalidate(session)
     }
 
+    /// Changes the bit rate while encoding; the next frames use it.
+    public func setBitsPerSecond(_ bitsPerSecond: Int) throws(EncoderError) {
+        let status = VTSessionSetProperty(session, key: kVTCompressionPropertyKey_AverageBitRate, value: bitsPerSecond as CFNumber)
+        guard status == noErr else { throw .couldNotCreate(status) }
+    }
+
     /// Compresses one frame. `time` only needs to increase from frame to frame.
     public func encode(_ pixelBuffer: CVPixelBuffer, time: CMTime, forceKeyframe: Bool = false) throws(EncoderError) {
         let options = forceKeyframe ? [kVTEncodeFrameOptionKey_ForceKeyFrame: true] as CFDictionary : nil

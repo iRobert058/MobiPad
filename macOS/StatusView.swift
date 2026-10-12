@@ -138,6 +138,19 @@ struct StatusView: View {
             }
         }
         .font(.caption)
+        if model.isGamePadScreenEnabled {
+            Picker("Picture quality", selection: Binding(
+                get: { model.gamePadScreenMegabits },
+                set: { model.setGamePadScreenMegabits($0) }
+            )) {
+                ForEach(CompanionModel.gamePadScreenQualities, id: \.megabits) { quality in
+                    Text("\(quality.name) (\(quality.megabits) Mbit/s)").tag(quality.megabits)
+                }
+            }
+            Text("Higher is sharper, but gives the Wi-Fi more to carry. If the picture stutters, go one lower.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
     }
 
     @ViewBuilder private var testPlayerSettings: some View {

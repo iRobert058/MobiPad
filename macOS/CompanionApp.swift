@@ -48,6 +48,9 @@ final class CompanionModel {
     /// Whether phones in the Wii U GamePad layout get Cemu's GamePad window. Off until the player turns
     /// it on, so the Mac never starts recording the screen on its own.
     private(set) var isGamePadScreenEnabled: Bool
+    /// The GamePad picture's bit rate, in megabits a second.
+    private(set) var gamePadScreenMegabits: Int
+    static let gamePadScreenQualities = [(name: "Standard", megabits: 6), (name: "High", megabits: 12), (name: "Very high", megabits: 20)]
     /// Screen Recording isn't allowed yet (or wasn't when the switch was turned on).
     private(set) var gamePadScreenNeedsPermission = false
     /// Identity key (base64) → the name the phone had when it was approved.
@@ -57,6 +60,7 @@ final class CompanionModel {
 
     private static let approvedPhonesKey = "approvedPhones"
     private static let gamePadScreenKey = "gamePadScreenEnabled"
+    private static let gamePadScreenMegabitsKey = "gamePadScreenMegabits"
 
     init() {
         let dsuServer = DSUServer()
@@ -88,9 +92,14 @@ final class CompanionModel {
         }
         host.onVideoRequest { slot, keyframe in streamer.request(slot: slot, keyframe: keyframe) }
         gamePadStreamer = streamer
-        isGamePadScreenEnabled = UserDefaults.standard.bool(forKey: Self.gamePadScreenKey)
-        gamePadScreenNeedsPermission = isGamePadScreenEnabled && !CGPreflightScreenCaptureAccess()
-        streamer.setEnabled(isGamePadScreenEnabled)
+        let isEnabled = UserDefaults.standard.bool(forKey: Self.gamePadScreenKey)
+        let storedMegabits = UserDefaults.standard.integer(forKey: Self.gamePadScreenMegabitsKey)
+        let megabits = Self.gamePadScreenQualities.contains { $0.megabits == storedMegabits } ? storedMegabits : 6
+        isGamePadScreenEnabled = isEnabled
+        gamePadScreenMegabits = megabits
+        gamePadScreenNeedsPermission = isEnabled && !CGPreflightScreenCaptureAccess()
+        streamer.setBitsPerSecond(megabits * 1_000_000)
+        streamer.setEnabled(isEnabled)
 
         relay.model = self
         Task { await start() }
@@ -127,6 +136,12 @@ final class CompanionModel {
         if gamePadScreenNeedsPermission {
             gamePadScreenNeedsPermission = !CGRequestScreenCaptureAccess()
         }
+    }
+
+    func setGamePadScreenMegabits(_ megabits: Int) {
+        gamePadScreenMegabits = megabits
+        UserDefaults.standard.set(megabits, forKey: Self.gamePadScreenMegabitsKey)
+        gamePadStreamer.setBitsPerSecond(megabits * 1_000_000)
     }
 
     func openScreenRecordingSettings() {

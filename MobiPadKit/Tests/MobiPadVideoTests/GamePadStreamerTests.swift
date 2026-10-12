@@ -166,6 +166,20 @@ struct GamePadStreamerTests {
         #expect(outbox.statuses(1).last == .streaming)
     }
 
+    /// The quality setting changes while streaming, without interrupting the picture.
+    @Test func changesTheBitRateWhileStreaming() async throws {
+        let source = FakeSource()
+        let outbox = Outbox()
+        let streamer = Self.makeStreamer(source, outbox)
+        streamer.setEnabled(true)
+        let asking = Self.keepAsking(streamer, slot: 0)
+        defer { asking.cancel() }
+        try await Self.waitUntil { ((try? Self.decodedFrames(outbox.fragments(0))) ?? 0) >= 5 }
+        streamer.setBitsPerSecond(20_000_000)
+        let before = (try? Self.decodedFrames(outbox.fragments(0))) ?? 0
+        try await Self.waitUntil { ((try? Self.decodedFrames(outbox.fragments(0))) ?? 0) >= before + 10 }
+    }
+
     @Test func stopsCapturingWhenNobodyAsks() async throws {
         let source = FakeSource()
         let outbox = Outbox()

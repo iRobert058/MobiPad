@@ -45,7 +45,7 @@ public final class GamePadStreamer: @unchecked Sendable {
     private let queue = DispatchQueue(label: "MobiPad.GamePadStreamer", qos: .userInteractive)
     private let source: any FrameSource
     private let timing: Timing
-    private let settings: VideoEncoder.Settings
+    private var settings: VideoEncoder.Settings
     private let send: Send
     private let sendStatus: SendStatus
     private var timer: DispatchSourceTimer?
@@ -99,6 +99,18 @@ public final class GamePadStreamer: @unchecked Sendable {
         queue.async { [self] in
             isEnabled = enabled
             tick()
+        }
+    }
+
+    /// The picture's quality: more bits a second is sharper, but more for the Wi-Fi to carry.
+    public func setBitsPerSecond(_ bitsPerSecond: Int) {
+        queue.async { [self] in
+            settings.bitsPerSecond = bitsPerSecond
+            do {
+                try encoder?.setBitsPerSecond(bitsPerSecond)
+            } catch {
+                log.error("Couldn't change the bit rate: \(String(describing: error), privacy: .public)")
+            }
         }
     }
 
