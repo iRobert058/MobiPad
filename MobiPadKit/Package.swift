@@ -24,11 +24,11 @@ let package = Package(
         // Mac companion app only: Player 1 as key presses, for emulators without DSU (Ryujinx).
         .target(name: "MobiPadKeyboard", dependencies: ["MobiPadProtocol"]),
         // Both apps: the GamePad screen as H.264 video, split into datagrams (Mac) and put back together (phone).
-        .target(name: "MobiPadVideo"),
+        .target(name: "MobiPadVideo", dependencies: ["MobiPadProtocol"]),
         .testTarget(name: "MobiPadProtocolTests", dependencies: ["MobiPadProtocol"]),
         .testTarget(name: "MobiPadNetworkTests", dependencies: ["MobiPadNetwork"]),
         .testTarget(name: "MobiPadDSUTests", dependencies: ["MobiPadDSU", "MobiPadNetwork"]),
         .testTarget(name: "MobiPadKeyboardTests", dependencies: ["MobiPadKeyboard"]),
-        .testTarget(name: "MobiPadVideoTests", dependencies: ["MobiPadVideo"]),
+        .testTarget(name: "MobiPadVideoTests", dependencies: ["MobiPadVideo", "MobiPadProtocol"]),
     ]
 )

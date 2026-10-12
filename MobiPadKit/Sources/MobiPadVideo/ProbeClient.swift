@@ -6,7 +6,7 @@ import os
 /// The phone's side of the stream probe: subscribes to a Mac running the StreamProbe tool, puts the
 /// frames back together, decodes them, and reports the first frame in which the marker switched.
 ///
-/// All state lives on `queue`; ``onPicture`` is called there too.
+/// All state lives on `queue`; decoding happens on a ``VideoPlayer``'s.
 public final class ProbeClient: @unchecked Sendable {
     public struct Status: Sendable, Equatable {
         public var framesDecoded = 0
@@ -21,25 +21,39 @@ public final class ProbeClient: @unchecked Sendable {
     private let endpoint: NWEndpoint
     private var connection: NWConnection?
     private var timer: DispatchSourceTimer?
-    private var receiver = VideoReceiver()
-    private let decoder = VideoDecoder()
-    private var markerWhite: Bool?
+    private var player: VideoPlayer!
+    /// Touched only on the player's queue, in `onPicture`.
+    private let marker = MarkerState()
     private var status = Status()
-    private var decodeMicroseconds: [Int] = []
-    private var lastKeyframeRequest = ContinuousClock.now - .seconds(1)
+    private var totals = VideoPlayer.Stats()
 
-    /// Each decoded picture, on the client's queue, to show on screen.
-    private let onPicture: @Sendable (CVPixelBuffer) -> Void
     private let onStatus: @Sendable (Status) -> Void
 
+    private final class MarkerState: @unchecked Sendable {
+        var white: Bool?
+    }
+
+    /// - Parameter onPicture: each decoded picture, on the player's queue, to show on screen.
     public init(
         to endpoint: NWEndpoint,
         onPicture: @escaping @Sendable (CVPixelBuffer) -> Void,
         onStatus: @escaping @Sendable (Status) -> Void
     ) {
         self.endpoint = endpoint
-        self.onPicture = onPicture
         self.onStatus = onStatus
+        let marker = marker
+        player = VideoPlayer(
+            onPicture: { [weak self] picture in
+                // Reported before the picture goes to the screen, so drawing doesn't count towards the delay.
+                let white = LatencyMarker.isWhite(picture)
+                if white != marker.white {
+                    marker.white = white
+                    self?.send(.seen(white: white))
+                }
+                onPicture(picture)
+            },
+            requestKeyframe: { [weak self] in self?.send(.keyframe) }
+        )
     }
 
     public func start() {
@@ -92,47 +106,23 @@ public final class ProbeClient: @unchecked Sendable {
             log.debug("Dropped a datagram that isn't a fragment")
             return
         }
-        let output = receiver.receive(fragment)
-        if output.wantsKeyframe, ContinuousClock.now - lastKeyframeRequest > .milliseconds(100) {
-            lastKeyframeRequest = .now
-            send(.keyframe)
-        }
-        guard let frame = output.frame else { return }
-
-        let start = ContinuousClock.now
-        let picture: CVPixelBuffer
-        do {
-            picture = try decoder.decode(frame)
-        } catch {
-            fail("Decode failed: \(error)")
-            receiver.requireKeyframe()
-            send(.keyframe)
-            return
-        }
-        let elapsed = ContinuousClock.now - start
-        decodeMicroseconds.append(Int(elapsed.components.attoseconds / 1_000_000_000_000) + Int(elapsed.components.seconds) * 1_000_000)
-        status.framesDecoded += 1
-
-        // Reported before the picture goes to the screen, so drawing doesn't count towards the delay.
-        let white = LatencyMarker.isWhite(picture)
-        if white != markerWhite {
-            markerWhite = white
-            send(.seen(white: white))
-        }
-        onPicture(picture)
+        player.receive(fragment.encoded())
     }
 
     private func tick() {
         send(.subscribe)
-        let mean = decodeMicroseconds.isEmpty ? 0 : decodeMicroseconds.reduce(0, +) / decodeMicroseconds.count
-        decodeMicroseconds.removeAll(keepingCapacity: true)
+        let stats = player.takeStats()
+        totals.completed = stats.completed
+        totals.lost = stats.lost
+        totals.decoded += stats.decoded
         send(.stats(.init(
-            completed: UInt32(clamping: receiver.completedFrames),
-            lost: UInt32(clamping: receiver.lostFrames),
-            decoded: UInt32(clamping: status.framesDecoded),
-            meanDecodeMicroseconds: UInt32(clamping: mean)
+            completed: UInt32(clamping: totals.completed),
+            lost: UInt32(clamping: totals.lost),
+            decoded: UInt32(clamping: totals.decoded),
+            meanDecodeMicroseconds: UInt32(clamping: stats.meanDecodeMicroseconds)
         )))
-        status.framesLost = receiver.lostFrames
+        status.framesDecoded = totals.decoded
+        status.framesLost = totals.lost
         onStatus(status)
     }
 
@@ -142,7 +132,10 @@ public final class ProbeClient: @unchecked Sendable {
         onStatus(status)
     }
 
+    /// From any queue: a connection can send from anywhere.
     private func send(_ message: ProbeMessage) {
-        connection?.send(content: message.encoded(), completion: .idempotent)
+        queue.async { [self] in
+            connection?.send(content: message.encoded(), completion: .idempotent)
+        }
     }
 }
