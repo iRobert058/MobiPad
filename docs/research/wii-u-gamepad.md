@@ -1,6 +1,6 @@
 # Research: the Wii U GamePad in MobiPad
 
-*Status: the stream's delay is measured (step 1, branch `wii-u-gamepad`); deciding on level 1. Last updated 2026-10-12.*
+*Status: level 1 built (branch `wii-u-gamepad`): the GamePad layout, touch over DSU and Set Up Cemu; not yet tried in Cemu. Level 2 next. Last updated 2026-10-12.*
 
 ## Summary
 
@@ -35,6 +35,13 @@ The real GamePad screen is resistive and single-touch, so one touch point is eno
 - **Optionally "Set Up Cemu"**, like Set Up Dolphin and Set Up Eden. Cemu on macOS keeps one profile per player in `~/Library/Application Support/Cemu/controllerProfiles/controller0.xml` … `controller3.xml` (`InputManager.cpp`): an `emulated_controller` with a `type` ("Wii U GamePad", "Wii U Pro Controller"), and a `controller` with `api` `DSUController`, `uuid` = the DSU pad, `ip`, `port`, `motion` and `mappings`. Each mapping entry pairs the emulated controller's button id (the `ButtonId` enum in `VPADController.h` or `ProController.h`, counted from 1) with a DSU input id (`Buttons2` in `Controller.h`: bit *n* of the two DSU bitmask bytes is button *n*, and the stick axes start at 38). Cemu doesn't read the DSU PS byte, so Home can't be mapped. Profiles like these were written by hand on 2026-10-10 and Cemu loaded them and asked the DSU server for pad data.
 
 Without the picture on the phone, level 1 suits menus and large buttons, with Cemu's GamePad view open on the Mac (Separate GamePad View, or both screens in one window). Precise touch (drawing, picking a spot on a map) needs level 2.
+
+### As built (2026-10-12)
+
+- `ControllerState.touch`: an id that changes with every new touch, and x and y as 0–65535 from the top-left. On the wire it's 5 bytes after the optional motion block; the four possible lengths of a state (16, 21, 40, 45 bytes) all differ, so the protocol version stays 3 and a state without touch is unchanged. An older Mac app drops states with touch, so the GamePad's buttons stop while its touchscreen is touched (*inferred* from the parser).
+- DSU: `tpad1` = active, the touch id, `x * 1919`, `y * 941`. Only the GamePad layout sends touch, so the other layouts stay as they were in Dolphin and Eden.
+- The phone: a 16:9 touch area of 427 × 240 points between the controls, resizable like any control. A touch lasts at least 120 ms like a button press, so a quick tap reaches the game. Motion is sent as on the Classic Controller (the screen's axes).
+- Set Up Cemu writes named profiles (`MobiPad GamePad Player 1` to 4, `MobiPad Pro Controller Player 1` to 4) to `controllerProfiles/`, which Cemu's Input settings list, and leaves `controller0.xml` to `controller3.xml` alone.
 
 ### Not available through DSU
 
