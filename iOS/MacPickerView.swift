@@ -32,7 +32,7 @@ struct MacPickerView: View {
                         }
                     }
                 } footer: {
-                    Text("The Wii Remotes use the phone’s motion, for Wii games in Dolphin: sideways for steering, pointing for games like Wii Party.")
+                    Text("The Wii Remotes use the phone’s motion, for Wii games in Dolphin: sideways for steering, pointing for games like Wii Party. The Wii U GamePad is for Cemu, with a touchscreen in the middle.")
                 }
 
                 Section("Macs on this network") {

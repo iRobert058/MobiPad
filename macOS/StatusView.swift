@@ -192,6 +192,10 @@ private struct PlayerRow: View {
         var names = Self.buttonNames.filter { state.buttons.contains($0.0) }.map(\.1)
         if state.leftTrigger > 0 { names.append("LT") }
         if state.rightTrigger > 0 { names.append("RT") }
+        // The GamePad's touchscreen, as percentages from the top-left corner.
+        if let touch = state.touch {
+            names.append("Touch \(Int(touch.normalizedX * 100)),\(Int(touch.normalizedY * 100))")
+        }
         return names.isEmpty ? "–" : names.joined(separator: " ")
     }
 

@@ -77,7 +77,16 @@ final class AppModel {
         guard browser == nil else { return }
         // Called on the main queue.
         let browser = MacBrowser { [weak self] macs in
-            MainActor.assumeIsolated { self?.macs = macs }
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.macs = macs
+                #if DEBUG
+                // Launched with -connectToFirstMac: connects without a tap, for testing in the Simulator.
+                if ProcessInfo.processInfo.arguments.contains("-connectToFirstMac"), self.connectedMac == nil, let mac = macs.first {
+                    self.connect(to: mac)
+                }
+                #endif
+            }
         }
         browser.start()
         self.browser = browser
@@ -134,7 +143,8 @@ final class AppModel {
         state.motion = switch controllerKind {
         case .wiiRemote: motion?.turnedSideways
         case .joyConSideways: motion?.turnedLikeSidewaysJoyCon
-        case .classic, .wiiPointer, .joyConUpright: motion
+        // The GamePad is held in landscape like the phone, so the screen's axes are the pad's.
+        case .classic, .wiiPointer, .joyConUpright, .wiiUGamePad: motion
         }
         link?.send(state)
     }
