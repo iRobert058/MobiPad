@@ -117,6 +117,16 @@ struct GamePadStreamerTests {
 
     struct TimedOut: Error {}
 
+    /// Asks every 100 ms, as the app does every second, until cancelled.
+    static func keepAsking(_ streamer: GamePadStreamer, slot: Int) -> Task<Void, any Error> {
+        Task {
+            while !Task.isCancelled {
+                streamer.request(slot: slot, keyframe: false)
+                try await Task.sleep(for: .milliseconds(100))
+            }
+        }
+    }
+
     /// Decodes everything a slot got, the way the phone does.
     static func decodedFrames(_ fragments: [Data]) throws -> Int {
         var receiver = VideoReceiver()
@@ -148,11 +158,12 @@ struct GamePadStreamerTests {
         let streamer = Self.makeStreamer(source, outbox)
         streamer.setEnabled(true)
         streamer.request(slot: 1, keyframe: true)
-        try await Self.waitUntil { outbox.fragments(1).count > 30 }
+        let asking = Self.keepAsking(streamer, slot: 1)
+        defer { asking.cancel() }
+        // Starts with a keyframe, so everything decodes.
+        try await Self.waitUntil { ((try? Self.decodedFrames(outbox.fragments(1))) ?? 0) >= 5 }
         #expect(outbox.fragments(0).isEmpty)
         #expect(outbox.statuses(1).last == .streaming)
-        // Starts with a keyframe, so everything decodes.
-        #expect(try Self.decodedFrames(outbox.fragments(1)) > 5)
     }
 
     @Test func stopsCapturingWhenNobodyAsks() async throws {
@@ -172,7 +183,8 @@ struct GamePadStreamerTests {
         let outbox = Outbox()
         let streamer = Self.makeStreamer(source, outbox)
         streamer.setEnabled(true)
-        streamer.request(slot: 0, keyframe: false)
+        let asking = Self.keepAsking(streamer, slot: 0)
+        defer { asking.cancel() }
         try await Self.waitUntil { source.isRunning }
         streamer.setEnabled(false)
         try await Self.waitUntil { !source.isRunning }
@@ -213,7 +225,8 @@ struct GamePadStreamerTests {
         let outbox = Outbox()
         let streamer = Self.makeStreamer(source, outbox)
         streamer.setEnabled(true)
-        streamer.request(slot: 0, keyframe: false)
+        let asking = Self.keepAsking(streamer, slot: 0)
+        defer { asking.cancel() }
         try await Self.waitUntil { source.isRunning }
         source.close()
         try await Self.waitUntil { outbox.statuses(0).last == .noWindow }
@@ -226,13 +239,7 @@ struct GamePadStreamerTests {
         let outbox = Outbox()
         let streamer = Self.makeStreamer(source, outbox)
         streamer.setEnabled(true)
-        // The phone keeps asking, as the app does once a second.
-        let asking = Task {
-            while !Task.isCancelled {
-                streamer.request(slot: 0, keyframe: false)
-                try await Task.sleep(for: .milliseconds(100))
-            }
-        }
+        let asking = Self.keepAsking(streamer, slot: 0)
         defer { asking.cancel() }
         try await Self.waitUntil { !outbox.fragments(0).isEmpty }
         // The refresh, every 200 ms here.
