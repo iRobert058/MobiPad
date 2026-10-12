@@ -27,6 +27,8 @@ struct StatusView: View {
             cemuSettings
             edenSettings
             Divider()
+            gamePadScreenSettings
+            Divider()
             testPlayerSettings
             Divider()
             keyboardSettings
@@ -115,6 +117,24 @@ struct StatusView: View {
             case .failure(let error):
                 Text("Couldn’t set up Eden: \(error.localizedDescription)")
                     .foregroundStyle(.red)
+            }
+        }
+        .font(.caption)
+    }
+
+    @ViewBuilder private var gamePadScreenSettings: some View {
+        Toggle("Show the GamePad screen on the phone", isOn: Binding(
+            get: { model.isGamePadScreenEnabled },
+            set: { model.setGamePadScreenEnabled($0) }
+        ))
+        Group {
+            if model.gamePadScreenNeedsPermission {
+                Text("Allow MobiPad under System Settings → Privacy & Security → Screen & System Audio Recording, then quit and reopen MobiPad.")
+                    .foregroundStyle(.orange)
+                Button("Open Privacy Settings") { model.openScreenRecordingSettings() }
+            } else {
+                Text("Records only Cemu’s GamePad window (Options → Separate GamePad view), only while a phone in the Wii U GamePad layout shows it, and sends it encrypted to that phone.")
+                    .foregroundStyle(.secondary)
             }
         }
         .font(.caption)

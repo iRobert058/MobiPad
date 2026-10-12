@@ -70,6 +70,8 @@ targets:
         product: MobiPadDSU
       - package: MobiPadKit
         product: MobiPadKeyboard
+      - package: MobiPadKit
+        product: MobiPadVideo
     settings:
       base:
         ENABLE_HARDENED_RUNTIME: YES

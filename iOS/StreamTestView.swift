@@ -1,9 +1,7 @@
 #if DEBUG
-import AVFoundation
-import CoreMedia
 import MobiPadNetwork
 import MobiPadVideo
-import os
+import Network
 import SwiftUI
 
 /// A development screen, in debug builds only: shows the video from the StreamProbe tool on the Mac,
@@ -20,7 +18,8 @@ struct StreamTestView: View {
         NavigationStack {
             Group {
                 if let session {
-                    StreamPlayer(session: session)
+                    VideoDisplayView(display: session.display)
+                        .background(.black)
                         .ignoresSafeArea()
                         .overlay(alignment: .bottomLeading) {
                             Text(session.statusText)
@@ -81,26 +80,18 @@ struct StreamTestView: View {
     }
 }
 
-/// One connection to StreamProbe, and the layer that shows its pictures.
+/// One connection to StreamProbe, and the display that shows its pictures.
 @Observable @MainActor
 final class StreamSession {
-    let layer = AVSampleBufferDisplayLayer()
+    let display = VideoDisplay()
     private(set) var status = ProbeClient.Status()
     private var client: ProbeClient?
 
     init(endpoint: NWEndpoint) {
-        layer.videoGravity = .resizeAspect
-        let renderer = Renderer(layer.sampleBufferRenderer)
+        let display = display
         let client = ProbeClient(
             to: endpoint,
-            onPicture: { picture in
-                // Shown as soon as it's enqueued, without waiting for a presentation time.
-                guard let sample = Self.sampleBuffer(for: picture) else {
-                    Logger(subsystem: "MobiPad", category: "probe").error("Couldn't wrap a decoded picture for display")
-                    return
-                }
-                renderer.value.enqueue(sample)
-            },
+            onPicture: { picture in display.show(picture) },
             onStatus: { [weak self] status in
                 Task { @MainActor in self?.status = status }
             }
@@ -120,55 +111,6 @@ final class StreamSession {
     func stop() {
         client?.stop()
         client = nil
-    }
-
-    nonisolated private static func sampleBuffer(for picture: CVPixelBuffer) -> CMSampleBuffer? {
-        var format: CMVideoFormatDescription?
-        guard CMVideoFormatDescriptionCreateForImageBuffer(allocator: nil, imageBuffer: picture, formatDescriptionOut: &format) == noErr,
-              let format
-        else { return nil }
-        var timing = CMSampleTimingInfo(duration: .invalid, presentationTimeStamp: .zero, decodeTimeStamp: .invalid)
-        var sample: CMSampleBuffer?
-        guard CMSampleBufferCreateReadyWithImageBuffer(
-            allocator: nil, imageBuffer: picture, formatDescription: format, sampleTiming: &timing, sampleBufferOut: &sample
-        ) == noErr, let sample else { return nil }
-        if let attachments = CMSampleBufferGetSampleAttachmentsArray(sample, createIfNecessary: true),
-           CFArrayGetCount(attachments) > 0 {
-            let dictionary = unsafeBitCast(CFArrayGetValueAtIndex(attachments, 0), to: CFMutableDictionary.self)
-            CFDictionarySetValue(
-                dictionary,
-                Unmanaged.passUnretained(kCMSampleAttachmentKey_DisplayImmediately).toOpaque(),
-                Unmanaged.passUnretained(kCFBooleanTrue).toOpaque()
-            )
-        }
-        return sample
-    }
-}
-
-/// The renderer takes sample buffers from any thread (AVQueuedSampleBufferRendering), but isn't
-/// marked Sendable.
-private struct Renderer: @unchecked Sendable {
-    let value: AVSampleBufferVideoRenderer
-    init(_ value: AVSampleBufferVideoRenderer) { self.value = value }
-}
-
-private struct StreamPlayer: UIViewRepresentable {
-    let session: StreamSession
-
-    func makeUIView(context: Context) -> PlayerView {
-        let view = PlayerView()
-        view.backgroundColor = .black
-        view.layer.addSublayer(session.layer)
-        return view
-    }
-
-    func updateUIView(_ view: PlayerView, context: Context) {}
-
-    final class PlayerView: UIView {
-        override func layoutSubviews() {
-            super.layoutSubviews()
-            layer.sublayers?.forEach { $0.frame = bounds }
-        }
     }
 }
 #endif

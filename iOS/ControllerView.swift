@@ -73,7 +73,14 @@ struct ControllerView: View {
                 tilt.stop()
             }
         }
-        .onDisappear { tilt.stop() }
+        .onDisappear {
+            tilt.stop()
+            model.setGamePadScreenShown(false)
+        }
+        // The GamePad's picture is streamed only while its touchscreen is on screen.
+        .onChange(of: model.controllerKind == .wiiUGamePad && layout[.padScreen].isShown, initial: true) { _, shown in
+            model.setGamePadScreenShown(shown)
+        }
         // FR-05: a light tap whenever a button goes down.
         .sensoryFeedback(.impact(weight: .light), trigger: state.buttons) { old, new in
             !new.subtracting(old).isEmpty
@@ -398,7 +405,7 @@ struct ControllerView: View {
                 right: button("A", .b, size: size),
                 bottom: button("B", .a, size: size)
             )
-        case .padScreen: TouchScreen(touch: $state.touch)
+        case .padScreen: TouchScreen(touch: $state.touch, screen: model.gamePadScreen)
         case .padL: button("L", .leftShoulder, size: size)
         case .padR: button("R", .rightShoulder, size: size)
         case .padZL: trigger("ZL", \.leftTrigger, size: size)
@@ -572,6 +579,7 @@ private struct PressableButton: View {
 /// Like a button, a touch lasts at least `minimumPress`, so a quick tap still reaches the game.
 private struct TouchScreen: View {
     @Binding var touch: ControllerState.Touch?
+    let screen: GamePadScreen
     /// Where the finger is, in the view. Resets on its own when the system cancels the touch.
     @GestureState private var location: CGPoint?
     @State private var touchedAt: ContinuousClock.Instant?
@@ -586,17 +594,28 @@ private struct TouchScreen: View {
             let size = proxy.size
             RoundedRectangle(cornerRadius: 12)
                 .fill(Color.secondary.opacity(0.12))
-                .strokeBorder(Color.secondary.opacity(0.4))
+                .overlay {
+                    // Always there, so the layer survives; hidden until a picture arrives.
+                    VideoDisplayView(display: screen.display)
+                        .background(.black)
+                        .opacity(screen.hasPicture ? 1 : 0)
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 12).strokeBorder(Color.secondary.opacity(0.4))
+                }
                 .overlay {
                     if let touch {
                         Circle()
-                            .fill(Color.accentColor.opacity(0.6))
+                            .fill(Color.accentColor.opacity(0.5))
                             .frame(width: 28, height: 28)
                             .position(x: touch.normalizedX * size.width, y: touch.normalizedY * size.height)
-                    } else {
-                        Text("Touchscreen")
+                    } else if !screen.hasPicture {
+                        Text(placeholder)
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding()
                     }
                 }
                 .contentShape(Rectangle())
@@ -617,6 +636,16 @@ private struct TouchScreen: View {
         .accessibilityLabel("GamePad touchscreen")
         // VoiceOver passes touches straight through, so the screen can still be touched where needed.
         .accessibilityAddTraits(.allowsDirectInteraction)
+    }
+
+    /// What to do on the Mac to see the GamePad's picture here.
+    private var placeholder: String {
+        switch screen.status {
+        case .off: "Touchscreen\nTo see the GamePad here, turn on “Show the GamePad screen on the phone” in MobiPad on the Mac."
+        case .noWindow: "Touchscreen\nTo see the GamePad here, turn on Options → Separate GamePad view in Cemu."
+        case .noPermission: "Touchscreen\nTo see the GamePad here, allow Screen Recording for MobiPad on the Mac."
+        case .streaming, nil: "Touchscreen"
+        }
     }
 
     private func move(to point: CGPoint) {

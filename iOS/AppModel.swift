@@ -30,6 +30,10 @@ final class AppModel {
         didSet { UserDefaults.standard.set(try? JSONEncoder().encode(layout), forKey: Self.layoutKey) }
     }
 
+    /// The GamePad's picture, while the Wii U GamePad layout shows its touchscreen.
+    let gamePadScreen = GamePadScreen()
+    @ObservationIgnored private var showsGamePadScreen = false
+
     private var browser: MacBrowser?
     private var link: ControllerLink?
     /// The buttons and sticks last sent, so tilt can be sent along with them.
@@ -113,9 +117,11 @@ final class AppModel {
         lastState = ControllerState()
         motion = nil
         link.connect()
+        updateGamePadScreen()
     }
 
     func disconnect() {
+        gamePadScreen.stop(on: link)
         link?.disconnect()
         link = nil
         linkToken = UUID()
@@ -123,6 +129,21 @@ final class AppModel {
         status = .disconnected
         lastState = ControllerState()
         motion = nil
+    }
+
+    /// Whether the controller screen shows the GamePad's touchscreen, which then asks the Mac for its picture.
+    func setGamePadScreenShown(_ shown: Bool) {
+        guard shown != showsGamePadScreen else { return }
+        showsGamePadScreen = shown
+        updateGamePadScreen()
+    }
+
+    private func updateGamePadScreen() {
+        if showsGamePadScreen, let link {
+            gamePadScreen.start(on: link)
+        } else {
+            gamePadScreen.stop(on: link)
+        }
     }
 
     func send(_ state: ControllerState) {
