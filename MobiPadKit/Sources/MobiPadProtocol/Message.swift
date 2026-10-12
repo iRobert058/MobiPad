@@ -113,6 +113,12 @@ public enum Message: Equatable, Sendable {
 /// | 3    | ping    | Mac → phone | token u64: measures latency and tells the phone the Mac is still there   |
 /// | 4    | pong    | phone → Mac | the ping's token                                                          |
 /// | 5    | slot    | Mac → phone | slot u8 (player number minus one), inside the welcome                     |
+/// | 6    | video   | Mac → phone | a piece of the GamePad screen's video (MobiPadVideo's `VideoFragment`)    |
+/// | 7    | video request | phone → Mac | keyframe u8 (0 or 1): keep streaming to this phone, every second while |
+/// |      |         |             | it shows the GamePad screen; 1 asks for a keyframe now, after a lost frame |
+/// | 8    | video status | Mac → phone | ``VideoStatus`` u8: why there's no picture, every second while asked |
+///
+/// A Mac from before video drops the phone's video requests, and a phone from before video never asks.
 public enum SessionMessage: Equatable, Sendable {
     /// A complete controller snapshot. The phone sends snapshots rather than events,
     /// so a lost datagram is corrected by the next one and no button can get stuck.
@@ -121,9 +127,23 @@ public enum SessionMessage: Equatable, Sendable {
     case ping(token: UInt64)
     case pong(token: UInt64)
     case slot(UInt8)
+    case video(Data)
+    case videoRequest(keyframe: Bool)
+    case videoStatus(VideoStatus)
+
+    /// Whether the Mac is streaming the GamePad screen, or what's missing.
+    public enum VideoStatus: UInt8, Sendable {
+        case streaming = 0
+        /// The player hasn't turned the GamePad screen on in the Mac's menu.
+        case off
+        /// Cemu isn't showing its GamePad in a window of its own.
+        case noWindow
+        /// MobiPad on the Mac isn't allowed to record the screen.
+        case noPermission
+    }
 
     private enum MessageType: UInt8 {
-        case state = 1, goodbye, ping, pong, slot
+        case state = 1, goodbye, ping, pong, slot, video, videoRequest, videoStatus
     }
 
     /// Bytes in a state without motion, after the type byte.
@@ -176,6 +196,15 @@ public enum SessionMessage: Equatable, Sendable {
         case .slot(let slot):
             data.append(MessageType.slot.rawValue)
             data.append(slot)
+        case .video(let fragment):
+            data.append(MessageType.video.rawValue)
+            data += fragment
+        case .videoRequest(let keyframe):
+            data.append(MessageType.videoRequest.rawValue)
+            data.append(keyframe ? 1 : 0)
+        case .videoStatus(let status):
+            data.append(MessageType.videoStatus.rawValue)
+            data.append(status.rawValue)
         }
         return data
     }
@@ -227,6 +256,17 @@ public enum SessionMessage: Equatable, Sendable {
         case .slot:
             try requireLength(1)
             self = .slot(bytes[1])
+        case .video:
+            guard bytes.count > 1 else { throw .wrongLength }
+            self = .video(Data(bytes[1...]))
+        case .videoRequest:
+            try requireLength(1)
+            guard bytes[1] <= 1 else { throw .wrongLength }
+            self = .videoRequest(keyframe: bytes[1] == 1)
+        case .videoStatus:
+            try requireLength(1)
+            guard let status = VideoStatus(rawValue: bytes[1]) else { throw .unknownMessageType(bytes[1]) }
+            self = .videoStatus(status)
         }
     }
 }

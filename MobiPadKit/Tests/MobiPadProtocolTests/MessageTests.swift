@@ -47,6 +47,11 @@ struct MessageTests {
         .ping(token: .max),
         .pong(token: 42),
         .slot(3),
+        .video(Data([0, 0, 0, 7, 0, 1, 0, 2, 9, 9])),
+        .videoRequest(keyframe: true),
+        .videoRequest(keyframe: false),
+        .videoStatus(.streaming),
+        .videoStatus(.noPermission),
     ]
 
     @Test(arguments: messages)
@@ -108,6 +113,15 @@ struct MessageTests {
         #expect(ControllerState.Touch(id: 0, normalizedX: 0, normalizedY: 1) == .init(id: 0, x: 0, y: 65535))
         #expect(ControllerState.Touch(id: 0, normalizedX: 0.5, normalizedY: -3) == .init(id: 0, x: 32768, y: 0))
         #expect(ControllerState.Touch(id: 0, normalizedX: .nan, normalizedY: 7) == .init(id: 0, x: 0, y: 65535))
+    }
+
+    @Test func videoMessagesUseDocumentedLayout() {
+        #expect([UInt8](SessionMessage.video(Data([5, 6])).encoded()) == [6, 5, 6])
+        #expect([UInt8](SessionMessage.videoRequest(keyframe: true).encoded()) == [7, 1])
+        #expect([UInt8](SessionMessage.videoStatus(.noWindow).encoded()) == [8, 2])
+        #expect(throws: Message.ParseError.wrongLength) { try SessionMessage(decoding: Data([6])) }
+        #expect(throws: Message.ParseError.wrongLength) { try SessionMessage(decoding: Data([7, 2])) }
+        #expect(throws: Message.ParseError.unknownMessageType(9)) { try SessionMessage(decoding: Data([8, 9])) }
     }
 
     @Test func rejectsAPartialMotionBlock() {
