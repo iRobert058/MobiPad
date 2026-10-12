@@ -14,6 +14,9 @@ public struct ControllerState: Equatable, Sendable {
     public var rightTrigger: UInt8
     /// The phone's motion sensors, when the player uses tilt (Wii Remote mode). Nil otherwise.
     public var motion: Motion?
+    /// Where a finger is on the Wii U GamePad's touchscreen. Nil while nothing touches it, and in
+    /// every other layout.
+    public var touch: Touch?
 
     public init(
         buttons: Buttons = [],
@@ -21,7 +24,8 @@ public struct ControllerState: Equatable, Sendable {
         rightStick: Stick = .centered,
         leftTrigger: UInt8 = 0,
         rightTrigger: UInt8 = 0,
-        motion: Motion? = nil
+        motion: Motion? = nil,
+        touch: Touch? = nil
     ) {
         self.buttons = buttons
         self.leftStick = leftStick
@@ -29,6 +33,7 @@ public struct ControllerState: Equatable, Sendable {
         self.leftTrigger = leftTrigger
         self.rightTrigger = rightTrigger
         self.motion = motion
+        self.touch = touch
     }
 }
 
@@ -78,6 +83,38 @@ extension ControllerState {
         private static func quantize(_ value: Double) -> Int16 {
             guard value.isFinite else { return 0 }
             return Int16((value.clamped(to: -1...1) * Double(Int16.max)).rounded())
+        }
+    }
+}
+
+extension ControllerState {
+    /// One finger on a touchscreen, at wire precision.
+    public struct Touch: Equatable, Sendable {
+        /// Changes with every new touch, so a lift followed by a new touch still counts as two touches
+        /// when the state in between was lost. Emulators tell touches apart by it.
+        public var id: UInt8
+        /// 0 is the left edge, 65535 the right edge.
+        public var x: UInt16
+        /// 0 is the top edge, 65535 the bottom edge.
+        public var y: UInt16
+
+        public init(id: UInt8, x: UInt16, y: UInt16) {
+            self.id = id
+            self.x = x
+            self.y = y
+        }
+
+        /// From fractions of the touch area's width and height, clamped to 0...1.
+        public init(id: UInt8, normalizedX: Double, normalizedY: Double) {
+            self.init(id: id, x: Self.quantize(normalizedX), y: Self.quantize(normalizedY))
+        }
+
+        public var normalizedX: Double { Double(x) / Double(UInt16.max) }
+        public var normalizedY: Double { Double(y) / Double(UInt16.max) }
+
+        private static func quantize(_ value: Double) -> UInt16 {
+            guard value.isFinite else { return 0 }
+            return UInt16((value.clamped(to: 0...1) * Double(UInt16.max)).rounded())
         }
     }
 }

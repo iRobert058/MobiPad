@@ -19,6 +19,14 @@ struct MessageTests {
         )
     )
 
+    static let touchState = ControllerState(buttons: [.y], touch: .init(id: 9, x: 0x1234, y: 0xFFFF))
+
+    static var gamePadState: ControllerState {
+        var state = tiltState
+        state.touch = .init(id: 255, x: 0, y: 1)
+        return state
+    }
+
     static let key = Data(repeating: 0xAB, count: 32)
 
     static let messages: [Message] = [
@@ -33,6 +41,8 @@ struct MessageTests {
     static let sessionMessages: [SessionMessage] = [
         .state(sequence: 0xDEAD_BEEF, busyState),
         .state(sequence: 7, tiltState),
+        .state(sequence: 8, touchState),
+        .state(sequence: 9, gamePadState),
         .goodbye,
         .ping(token: .max),
         .pong(token: 42),
@@ -79,6 +89,25 @@ struct MessageTests {
         let decoded = try SessionMessage(decoding: SessionMessage.state(sequence: 1, Self.busyState).encoded())
         guard case .state(_, let state) = decoded else { Issue.record("not a state"); return }
         #expect(state.motion == nil)
+    }
+
+    @Test func touchFollowsTheState() {
+        let bytes = [UInt8](SessionMessage.state(sequence: 1, Self.touchState).encoded())
+        #expect(bytes.count == 1 + 16 + 5)
+        #expect(bytes[17...] == [9, 0x12, 0x34, 0xFF, 0xFF])
+    }
+
+    @Test func touchFollowsTheMotion() {
+        let bytes = [UInt8](SessionMessage.state(sequence: 1, Self.gamePadState).encoded())
+        #expect(bytes.count == 1 + 16 + 24 + 5)
+        #expect(bytes[17..<21] == [0x3F, 0x00, 0x00, 0x00]) // acceleration x = 0.5, as without touch
+        #expect(bytes[41...] == [255, 0, 0, 0, 1])
+    }
+
+    @Test func touchFromFractions() {
+        #expect(ControllerState.Touch(id: 0, normalizedX: 0, normalizedY: 1) == .init(id: 0, x: 0, y: 65535))
+        #expect(ControllerState.Touch(id: 0, normalizedX: 0.5, normalizedY: -3) == .init(id: 0, x: 32768, y: 0))
+        #expect(ControllerState.Touch(id: 0, normalizedX: .nan, normalizedY: 7) == .init(id: 0, x: 0, y: 65535))
     }
 
     @Test func rejectsAPartialMotionBlock() {

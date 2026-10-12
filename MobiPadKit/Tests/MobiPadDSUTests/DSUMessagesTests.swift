@@ -51,6 +51,23 @@ struct DSUMessagesTests {
         #expect(bytes[55] == 0) // L2
     }
 
+    @Test func touchFillsTheFirstTouchPoint() throws {
+        let state = ControllerState(touch: .init(id: 7, normalizedX: 1, normalizedY: 0.5))
+        let bytes = try ServerMessage(DSU.padData(slot: 0, state: state, packetCounter: 0, timestampMicroseconds: 0, serverID: 0)).bytes
+        #expect(bytes[39] == 0) // the touchpad button stays up
+        #expect(bytes[56] == 1) // active
+        #expect(bytes[57] == 7) // id
+        #expect(bytes.readLittleEndian(UInt16.self, at: 58) == 1919) // right edge of 1920
+        #expect(bytes.readLittleEndian(UInt16.self, at: 60) == 471) // middle of 942
+        #expect(bytes[62...67].allSatisfy { $0 == 0 }) // second touch inactive
+        #expect(bytes.count == 100)
+    }
+
+    @Test func noTouchMeansBothTouchPointsInactive() throws {
+        let bytes = try ServerMessage(DSU.padData(slot: 0, state: ControllerState(), packetCounter: 0, timestampMicroseconds: 0, serverID: 0)).bytes
+        #expect(bytes[56...67].allSatisfy { $0 == 0 })
+    }
+
     @Test func mapsSticksToBytesWithUpPositive() {
         #expect(DSU.stickByte(0) == 128)
         #expect(DSU.stickByte(32767) == 255)

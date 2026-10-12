@@ -107,7 +107,8 @@ public enum Message: Equatable, Sendable {
 /// | Type | Message | Direction   | Payload                                                                   |
 /// |------|---------|-------------|---------------------------------------------------------------------------|
 /// | 1    | state   | phone → Mac | sequence u32, buttons u16, left x/y, right x/y (i16), triggers (u8 each); |
-/// |      |         |             | then, only with tilt: acceleration x/y/z, rotation rate x/y/z (f32 each)  |
+/// |      |         |             | then, only with tilt: acceleration x/y/z, rotation rate x/y/z (f32 each); |
+/// |      |         |             | then, only while touching: touch id (u8), x, y (u16 each)                 |
 /// | 2    | goodbye | phone → Mac | none: the user disconnected (FR-02)                                       |
 /// | 3    | ping    | Mac → phone | token u64: measures latency and tells the phone the Mac is still there   |
 /// | 4    | pong    | phone → Mac | the ping's token                                                          |
@@ -129,6 +130,9 @@ public enum SessionMessage: Equatable, Sendable {
     static let stateLength = 16
     /// Bytes the optional motion block adds: six 32-bit floats.
     static let motionLength = 24
+    /// Bytes the optional touch block adds. The four possible lengths of a state all differ, so the
+    /// length tells which blocks are there, and phones that send neither still send 16 bytes.
+    static let touchLength = 5
 
     /// Whether `sequence` was sent after `other`, allowing for wrap-around. UDP can reorder
     /// datagrams, so the Mac drops states older than the last one it applied. This also
@@ -155,6 +159,11 @@ public enum SessionMessage: Equatable, Sendable {
                 for value in [motion.acceleration, motion.rotationRate].flatMap({ [$0.x, $0.y, $0.z] }) {
                     data.appendBigEndian(value.bitPattern)
                 }
+            }
+            if let touch = state.touch {
+                data.append(touch.id)
+                data.appendBigEndian(touch.x)
+                data.appendBigEndian(touch.y)
             }
         case .goodbye:
             data.append(MessageType.goodbye.rawValue)
@@ -183,9 +192,11 @@ public enum SessionMessage: Equatable, Sendable {
 
         switch type {
         case .state:
-            // The motion block is optional, so phones without tilt send the same 16 bytes as before.
-            let hasMotion = bytes.count == 1 + Self.stateLength + Self.motionLength
-            guard hasMotion || bytes.count == 1 + Self.stateLength else { throw .wrongLength }
+            // The motion and touch blocks are optional, so phones without them send the same 16 bytes as before.
+            let optional = bytes.count - 1 - Self.stateLength
+            let hasMotion = optional == Self.motionLength || optional == Self.motionLength + Self.touchLength
+            let hasTouch = optional == Self.touchLength || optional == Self.motionLength + Self.touchLength
+            guard hasMotion || hasTouch || optional == 0 else { throw .wrongLength }
             let sequence = reader.read(UInt32.self)
             var state = ControllerState(
                 buttons: .init(rawValue: reader.read(UInt16.self)),
@@ -199,6 +210,9 @@ public enum SessionMessage: Equatable, Sendable {
                     .init(x: reader.readFloat(), y: reader.readFloat(), z: reader.readFloat())
                 }
                 state.motion = .init(acceleration: vector(), rotationRate: vector())
+            }
+            if hasTouch {
+                state.touch = .init(id: reader.read(UInt8.self), x: reader.read(UInt16.self), y: reader.read(UInt16.self))
             }
             self = .state(sequence: sequence, state)
         case .goodbye:
