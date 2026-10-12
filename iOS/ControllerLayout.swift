@@ -14,6 +14,9 @@ enum ControllerKind: String, CaseIterable, Identifiable {
     case joyConSideways
     /// A single right Joy-Con held upright in one hand, its top toward the TV (Switch Sports). For Eden.
     case joyConUpright
+    /// A Wii U GamePad: two sticks, the buttons around a touch area where its screen is, and tilt for
+    /// gyro aiming. For Cemu.
+    case wiiUGamePad
 
     var id: Self { self }
 
@@ -24,10 +27,11 @@ enum ControllerKind: String, CaseIterable, Identifiable {
         case .wiiPointer: "Wii Remote (pointing)"
         case .joyConSideways: "Joy-Con (sideways)"
         case .joyConUpright: "Joy-Con (upright)"
+        case .wiiUGamePad: "Wii U GamePad"
         }
     }
 
-    /// The Wii Remotes and Joy-Cons send the phone's motion.
+    /// The Wii Remotes, Joy-Cons and the GamePad send the phone's motion.
     var usesMotion: Bool { self != .classic }
 
     /// The pointing Wii Remote and the upright Joy-Con are held upright. The others are held in landscape.
@@ -79,6 +83,9 @@ extension ControllerLayout {
         // A right Joy-Con held upright.
         case joyUprightStick, joyUprightButtons, joyUprightSL, joyUprightSR, joyUprightPlus, joyUprightHome
         case joyUprightR, joyUprightZR, joyUprightStickPress
+        // A Wii U GamePad.
+        case padLeftStick, padRightStick, padDpad, padButtons, padScreen
+        case padL, padR, padZL, padZR, padMinus, padPlus, padHome, padLeftStickPress, padRightStickPress
 
         var id: Self { self }
 
@@ -97,6 +104,9 @@ extension ControllerLayout {
             case .joyUprightStick, .joyUprightButtons, .joyUprightSL, .joyUprightSR, .joyUprightPlus,
                  .joyUprightHome, .joyUprightR, .joyUprightZR, .joyUprightStickPress:
                 .joyConUpright
+            case .padLeftStick, .padRightStick, .padDpad, .padButtons, .padScreen, .padL, .padR, .padZL, .padZR,
+                 .padMinus, .padPlus, .padHome, .padLeftStickPress, .padRightStickPress:
+                .wiiUGamePad
             }
         }
 
@@ -141,6 +151,20 @@ extension ControllerLayout {
             case .joyR, .joyUprightR: "R"
             case .joyZR, .joyUprightZR: "ZR"
             case .joyStickPress, .joyUprightStickPress: "Stick click"
+            case .padLeftStick: "Left stick"
+            case .padRightStick: "Right stick"
+            case .padDpad: "D-pad"
+            case .padButtons: "A B X Y"
+            case .padScreen: "Touchscreen"
+            case .padL: "L"
+            case .padR: "R"
+            case .padZL: "ZL"
+            case .padZR: "ZR"
+            case .padMinus: "−"
+            case .padPlus: "+"
+            case .padHome: "Home (Cemu ignores it)"
+            case .padLeftStickPress: "LS (left stick click)"
+            case .padRightStickPress: "RS (right stick click)"
             }
         }
 
@@ -206,6 +230,23 @@ extension ControllerLayout {
             case .joyUprightSL: Placement(center: CGPoint(x: 0.12, y: 0.5), isShown: false)
             case .joyUprightSR: Placement(center: CGPoint(x: 0.88, y: 0.5), isShown: false)
             case .joyUprightStickPress: Placement(center: CGPoint(x: 0.8, y: 0.66), isShown: false)
+            // Wii U GamePad, as on the pad: the touchscreen in the middle, the sticks above the D-pad and
+            // A/B/X/Y on either side, L, R, ZL and ZR in the top corners, − and + near them. Home does
+            // nothing in Cemu, which doesn't read it over DSU, so it starts hidden like the stick clicks.
+            case .padScreen: Placement(center: CGPoint(x: 0.5, y: 0.57))
+            case .padLeftStick: Placement(center: CGPoint(x: 0.09, y: 0.4))
+            case .padDpad: Placement(center: CGPoint(x: 0.09, y: 0.8))
+            case .padRightStick: Placement(center: CGPoint(x: 0.91, y: 0.4))
+            case .padButtons: Placement(center: CGPoint(x: 0.91, y: 0.8))
+            case .padZL: Placement(center: CGPoint(x: 0.04, y: 0.1))
+            case .padL: Placement(center: CGPoint(x: 0.12, y: 0.1))
+            case .padR: Placement(center: CGPoint(x: 0.88, y: 0.1))
+            case .padZR: Placement(center: CGPoint(x: 0.96, y: 0.1))
+            case .padMinus: Placement(center: CGPoint(x: 0.22, y: 0.1))
+            case .padPlus: Placement(center: CGPoint(x: 0.78, y: 0.1))
+            case .padHome: Placement(center: CGPoint(x: 0.5, y: 0.1), isShown: false)
+            case .padLeftStickPress: Placement(center: CGPoint(x: 0.2, y: 0.4), isShown: false)
+            case .padRightStickPress: Placement(center: CGPoint(x: 0.8, y: 0.4), isShown: false)
             }
         }
     }

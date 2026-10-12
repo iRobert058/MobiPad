@@ -107,11 +107,18 @@ public enum Message: Equatable, Sendable {
 /// | Type | Message | Direction   | Payload                                                                   |
 /// |------|---------|-------------|---------------------------------------------------------------------------|
 /// | 1    | state   | phone → Mac | sequence u32, buttons u16, left x/y, right x/y (i16), triggers (u8 each); |
-/// |      |         |             | then, only with tilt: acceleration x/y/z, rotation rate x/y/z (f32 each)  |
+/// |      |         |             | then, only with tilt: acceleration x/y/z, rotation rate x/y/z (f32 each); |
+/// |      |         |             | then, only while touching: touch id (u8), x, y (u16 each)                 |
 /// | 2    | goodbye | phone → Mac | none: the user disconnected (FR-02)                                       |
 /// | 3    | ping    | Mac → phone | token u64: measures latency and tells the phone the Mac is still there   |
 /// | 4    | pong    | phone → Mac | the ping's token                                                          |
 /// | 5    | slot    | Mac → phone | slot u8 (player number minus one), inside the welcome                     |
+/// | 6    | video   | Mac → phone | a piece of the GamePad screen's video (MobiPadVideo's `VideoFragment`)    |
+/// | 7    | video request | phone → Mac | keyframe u8 (0 or 1): keep streaming to this phone, every second while |
+/// |      |         |             | it shows the GamePad screen; 1 asks for a keyframe now, after a lost frame |
+/// | 8    | video status | Mac → phone | ``VideoStatus`` u8: why there's no picture, every second while asked |
+///
+/// A Mac from before video drops the phone's video requests, and a phone from before video never asks.
 public enum SessionMessage: Equatable, Sendable {
     /// A complete controller snapshot. The phone sends snapshots rather than events,
     /// so a lost datagram is corrected by the next one and no button can get stuck.
@@ -120,15 +127,32 @@ public enum SessionMessage: Equatable, Sendable {
     case ping(token: UInt64)
     case pong(token: UInt64)
     case slot(UInt8)
+    case video(Data)
+    case videoRequest(keyframe: Bool)
+    case videoStatus(VideoStatus)
+
+    /// Whether the Mac is streaming the GamePad screen, or what's missing.
+    public enum VideoStatus: UInt8, Sendable {
+        case streaming = 0
+        /// The player hasn't turned the GamePad screen on in the Mac's menu.
+        case off
+        /// Cemu isn't showing its GamePad in a window of its own.
+        case noWindow
+        /// MobiPad on the Mac isn't allowed to record the screen.
+        case noPermission
+    }
 
     private enum MessageType: UInt8 {
-        case state = 1, goodbye, ping, pong, slot
+        case state = 1, goodbye, ping, pong, slot, video, videoRequest, videoStatus
     }
 
     /// Bytes in a state without motion, after the type byte.
     static let stateLength = 16
     /// Bytes the optional motion block adds: six 32-bit floats.
     static let motionLength = 24
+    /// Bytes the optional touch block adds. The four possible lengths of a state all differ, so the
+    /// length tells which blocks are there, and phones that send neither still send 16 bytes.
+    static let touchLength = 5
 
     /// Whether `sequence` was sent after `other`, allowing for wrap-around. UDP can reorder
     /// datagrams, so the Mac drops states older than the last one it applied. This also
@@ -156,6 +180,11 @@ public enum SessionMessage: Equatable, Sendable {
                     data.appendBigEndian(value.bitPattern)
                 }
             }
+            if let touch = state.touch {
+                data.append(touch.id)
+                data.appendBigEndian(touch.x)
+                data.appendBigEndian(touch.y)
+            }
         case .goodbye:
             data.append(MessageType.goodbye.rawValue)
         case .ping(let token):
@@ -167,6 +196,15 @@ public enum SessionMessage: Equatable, Sendable {
         case .slot(let slot):
             data.append(MessageType.slot.rawValue)
             data.append(slot)
+        case .video(let fragment):
+            data.append(MessageType.video.rawValue)
+            data += fragment
+        case .videoRequest(let keyframe):
+            data.append(MessageType.videoRequest.rawValue)
+            data.append(keyframe ? 1 : 0)
+        case .videoStatus(let status):
+            data.append(MessageType.videoStatus.rawValue)
+            data.append(status.rawValue)
         }
         return data
     }
@@ -183,9 +221,11 @@ public enum SessionMessage: Equatable, Sendable {
 
         switch type {
         case .state:
-            // The motion block is optional, so phones without tilt send the same 16 bytes as before.
-            let hasMotion = bytes.count == 1 + Self.stateLength + Self.motionLength
-            guard hasMotion || bytes.count == 1 + Self.stateLength else { throw .wrongLength }
+            // The motion and touch blocks are optional, so phones without them send the same 16 bytes as before.
+            let optional = bytes.count - 1 - Self.stateLength
+            let hasMotion = optional == Self.motionLength || optional == Self.motionLength + Self.touchLength
+            let hasTouch = optional == Self.touchLength || optional == Self.motionLength + Self.touchLength
+            guard hasMotion || hasTouch || optional == 0 else { throw .wrongLength }
             let sequence = reader.read(UInt32.self)
             var state = ControllerState(
                 buttons: .init(rawValue: reader.read(UInt16.self)),
@@ -200,6 +240,9 @@ public enum SessionMessage: Equatable, Sendable {
                 }
                 state.motion = .init(acceleration: vector(), rotationRate: vector())
             }
+            if hasTouch {
+                state.touch = .init(id: reader.read(UInt8.self), x: reader.read(UInt16.self), y: reader.read(UInt16.self))
+            }
             self = .state(sequence: sequence, state)
         case .goodbye:
             try requireLength(0)
@@ -213,6 +256,17 @@ public enum SessionMessage: Equatable, Sendable {
         case .slot:
             try requireLength(1)
             self = .slot(bytes[1])
+        case .video:
+            guard bytes.count > 1 else { throw .wrongLength }
+            self = .video(Data(bytes[1...]))
+        case .videoRequest:
+            try requireLength(1)
+            guard bytes[1] <= 1 else { throw .wrongLength }
+            self = .videoRequest(keyframe: bytes[1] == 1)
+        case .videoStatus:
+            try requireLength(1)
+            guard let status = VideoStatus(rawValue: bytes[1]) else { throw .unknownMessageType(bytes[1]) }
+            self = .videoStatus(status)
         }
     }
 }

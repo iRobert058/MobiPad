@@ -5,6 +5,9 @@ import SwiftUI
 /// Asks for the player's name and lists the Macs running MobiPad on this network (FR-01).
 struct MacPickerView: View {
     @Bindable var model: AppModel
+    #if DEBUG
+    @State private var showsStreamTest = StreamTestView.opensAtLaunch
+    #endif
 
     var body: some View {
         NavigationStack {
@@ -29,7 +32,7 @@ struct MacPickerView: View {
                         }
                     }
                 } footer: {
-                    Text("The Wii Remotes use the phone’s motion, for Wii games in Dolphin: sideways for steering, pointing for games like Wii Party.")
+                    Text("The Wii Remotes use the phone’s motion, for Wii games in Dolphin: sideways for steering, pointing for games like Wii Party. The Wii U GamePad is for Cemu, with a touchscreen in the middle.")
                 }
 
                 Section("Macs on this network") {
@@ -60,8 +63,18 @@ struct MacPickerView: View {
                 } label: {
                     Label("Appearance", systemImage: "circle.lefthalf.filled")
                 }
+                #if DEBUG
+                Button {
+                    showsStreamTest = true
+                } label: {
+                    Label("Stream Test", systemImage: "video")
+                }
+                #endif
             }
         }
+        #if DEBUG
+        .fullScreenCover(isPresented: $showsStreamTest) { StreamTestView() }
+        #endif
         .onAppear { model.startBrowsing() }
     }
 }

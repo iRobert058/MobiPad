@@ -31,6 +31,8 @@ targets:
         product: MobiPadProtocol
       - package: MobiPadKit
         product: MobiPadNetwork
+      - package: MobiPadKit
+        product: MobiPadVideo
     settings:
       base:
         TARGETED_DEVICE_FAMILY: "1" # iPhone
@@ -49,6 +51,7 @@ targets:
         NSLocalNetworkUsageDescription: MobiPad looks for your Mac on the local network so it can connect as a controller.
         NSBonjourServices:
           - _mobipad._udp # keep in sync with MobiPadService.bonjourType
+          - _mobipad-video._udp # the StreamProbe tool, for the debug-only Stream Test screen
 
   MobiPadCompanion:
     type: application
@@ -67,6 +70,8 @@ targets:
         product: MobiPadDSU
       - package: MobiPadKit
         product: MobiPadKeyboard
+      - package: MobiPadKit
+        product: MobiPadVideo
     settings:
       base:
         ENABLE_HARDENED_RUNTIME: YES

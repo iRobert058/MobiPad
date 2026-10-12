@@ -55,6 +55,7 @@ public final class ControllerHost: @unchecked Sendable {
     /// A pretend phone for checking an emulator's setup without an iPhone.
     private var testPlayer: Player?
     private var testTimer: DispatchSourceTimer?
+    private var onVideoRequest: (@Sendable (_ slot: Int, _ keyframe: Bool) -> Void)?
 
     private struct Peer {
         let connection: NWConnection
@@ -188,6 +189,30 @@ public final class ControllerHost: @unchecked Sendable {
             leftTrigger: trigger,
             rightTrigger: trigger
         )
+    }
+
+    /// Calls `handler` on the host's queue whenever a player's phone asks for the GamePad screen's video:
+    /// every second while it shows the screen, and right away when it needs a keyframe.
+    public func onVideoRequest(_ handler: @escaping @Sendable (_ slot: Int, _ keyframe: Bool) -> Void) {
+        queue.async { [self] in onVideoRequest = handler }
+    }
+
+    /// Sends a piece of the GamePad screen's video to the players in `slots`, encrypted for each.
+    public func sendVideo(_ fragment: Data, to slots: Set<Int>) {
+        queue.async { [self] in
+            for peer in peers.values where peer.player.map({ slots.contains($0.slot) }) == true {
+                sendSealed(.video(fragment), to: peer)
+            }
+        }
+    }
+
+    /// Tells a player's phone whether the GamePad screen is streaming, or what's missing.
+    public func sendVideoStatus(_ status: SessionMessage.VideoStatus, to slot: Int) {
+        queue.async { [self] in
+            for peer in peers.values where peer.player?.slot == slot {
+                sendSealed(.videoStatus(status), to: peer)
+            }
+        }
     }
 
     /// Lets the phone in. It joins with its next hello, within half a second.
@@ -364,7 +389,12 @@ public final class ControllerHost: @unchecked Sendable {
         case .ping(let token):
             sendSealed(.pong(token: token), to: peer)
 
-        case .slot:
+        case .videoRequest(let keyframe):
+            if let slot = peer.player?.slot {
+                onVideoRequest?(slot, keyframe)
+            }
+
+        case .slot, .video, .videoStatus:
             break
         }
     }

@@ -49,6 +49,17 @@ public final class ControllerLink: @unchecked Sendable {
     private var sequence: UInt32 = 0
     private var lastHeard = ContinuousClock.now
     private var lastSent = ContinuousClock.now
+    /// Receives the GamePad screen's video while set. See ``receiveVideo(_:)``.
+    private var onVideo: (@Sendable (VideoEvent) -> Void)?
+    private var lastVideoRequest = ContinuousClock.now
+
+    /// What the Mac sends about the GamePad screen's video.
+    public enum VideoEvent: Sendable, Equatable {
+        /// A piece of a video frame, for MobiPadVideo's `VideoFragment`.
+        case fragment(Data)
+        /// Why the Mac isn't streaming, or that it is.
+        case status(SessionMessage.VideoStatus)
+    }
 
     /// - Parameters:
     ///   - identity: this phone's long-term key; the Mac remembers it once the user allows the phone.
@@ -87,6 +98,26 @@ public final class ControllerLink: @unchecked Sendable {
             if case .connected = status {
                 sendState()
             }
+        }
+    }
+
+    /// Asks the Mac for the GamePad screen's video, and calls `handler` on the link's queue with every
+    /// piece of it and every status, until called with nil. Keep the handler quick: hand the pieces to
+    /// another queue to decode, so controller input never waits for video.
+    public func receiveVideo(_ handler: (@Sendable (VideoEvent) -> Void)?) {
+        queue.async { [self] in
+            onVideo = handler
+            if handler != nil, case .connected = status {
+                requestVideo(keyframe: true)
+            }
+        }
+    }
+
+    /// Asks the Mac for a keyframe, after a lost frame.
+    public func requestKeyframe() {
+        queue.async { [self] in
+            guard onVideo != nil, case .connected = status else { return }
+            requestVideo(keyframe: true)
         }
     }
 
@@ -151,6 +182,9 @@ public final class ControllerLink: @unchecked Sendable {
                 log.notice("Connected as player \(slot + 1)")
                 setStatus(.connected(slot: Int(slot)))
                 sendState()
+                if onVideo != nil {
+                    requestVideo(keyframe: true)
+                }
             }
         case .pending:
             lastHeard = .now
@@ -170,7 +204,11 @@ public final class ControllerLink: @unchecked Sendable {
             case .slot(let slot):
                 // The offered slot was taken by another phone meanwhile.
                 setStatus(.connected(slot: Int(slot)))
-            case .state, .goodbye, .pong:
+            case .video(let fragment):
+                onVideo?(.fragment(fragment))
+            case .videoStatus(let videoStatus):
+                onVideo?(.status(videoStatus))
+            case .state, .goodbye, .pong, .videoRequest:
                 break
             }
         case .hello:
@@ -192,6 +230,10 @@ public final class ControllerLink: @unchecked Sendable {
             if now - lastSent >= timing.resendInterval {
                 sendState()
             }
+            // The Mac streams only to phones that keep asking, so it stops when this one goes.
+            if onVideo != nil, now - lastVideoRequest >= .seconds(1) {
+                requestVideo(keyframe: false)
+            }
         case .connecting, .waitingForApproval, .full, .denied:
             if now - lastSent >= timing.helloInterval {
                 send(.hello(identity: identity.publicKey.rawRepresentation, ephemeral: ephemeral.publicKey.rawRepresentation, name: name))
@@ -200,6 +242,11 @@ public final class ControllerLink: @unchecked Sendable {
         case .disconnected:
             break
         }
+    }
+
+    private func requestVideo(keyframe: Bool) {
+        sendSealed(.videoRequest(keyframe: keyframe))
+        lastVideoRequest = .now
     }
 
     private func sendState() {

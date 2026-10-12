@@ -73,7 +73,14 @@ struct ControllerView: View {
                 tilt.stop()
             }
         }
-        .onDisappear { tilt.stop() }
+        .onDisappear {
+            tilt.stop()
+            model.setGamePadScreenShown(false)
+        }
+        // The GamePad's picture is streamed only while its touchscreen is on screen.
+        .onChange(of: model.controllerKind == .wiiUGamePad && layout[.padScreen].isShown, initial: true) { _, shown in
+            model.setGamePadScreenShown(shown)
+        }
         // FR-05: a light tap whenever a button goes down.
         .sensoryFeedback(.impact(weight: .light), trigger: state.buttons) { old, new in
             !new.subtracting(old).isEmpty
@@ -378,6 +385,36 @@ struct ControllerView: View {
         case .joyR, .joyUprightR: button("R", .rightShoulder, size: size)
         case .joyZR, .joyUprightZR: trigger("ZR", \.rightTrigger, size: size)
         case .joyStickPress, .joyUprightStickPress: button("RS", .rightStickPress, size: size)
+        // The GamePad's buttons go out as the state buttons the GamePad profile in Cemu expects, which maps
+        // the face buttons by position: right is A, bottom B, top X, left Y.
+        case .padLeftStick: ThumbStick(position: $state.leftStick, radius: Metrics.stickRadius * scale)
+        case .padRightStick: ThumbStick(position: $state.rightStick, radius: Metrics.stickRadius * scale)
+        case .padDpad:
+            cross(
+                scale: scale,
+                top: button("▲", .dpadUp, size: size),
+                left: button("◀", .dpadLeft, size: size),
+                right: button("▶", .dpadRight, size: size),
+                bottom: button("▼", .dpadDown, size: size)
+            )
+        case .padButtons:
+            cross(
+                scale: scale,
+                top: button("X", .y, size: size),
+                left: button("Y", .x, size: size),
+                right: button("A", .b, size: size),
+                bottom: button("B", .a, size: size)
+            )
+        case .padScreen: TouchScreen(touch: $state.touch, screen: model.gamePadScreen)
+        case .padL: button("L", .leftShoulder, size: size)
+        case .padR: button("R", .rightShoulder, size: size)
+        case .padZL: trigger("ZL", \.leftTrigger, size: size)
+        case .padZR: trigger("ZR", \.rightTrigger, size: size)
+        case .padMinus: button("−", .view, size: size)
+        case .padPlus: button("+", .menu, size: size)
+        case .padHome: button("Home", .home, size: size)
+        case .padLeftStickPress: button("LS", .leftStickPress, size: size)
+        case .padRightStickPress: button("RS", .rightStickPress, size: size)
         }
     }
 
@@ -434,14 +471,19 @@ private enum Metrics {
     /// How far a button's touch area reaches past its circle. At most 10, or neighbouring buttons in
     /// the D-pad and A/B/X/Y would share touches.
     static let buttonReach: CGFloat = 10
+    /// The GamePad's touchscreen: 16:9 like its 854 × 480 picture, and as large as fits between the
+    /// controls on an iPhone in landscape.
+    static let touchScreen = CGSize(width: 427, height: 240)
 }
 
 private extension ControllerLayout.Control {
     func size(scale: CGFloat) -> CGSize {
         let size: CGSize = switch self {
-        case .leftStick, .rightStick, .joyStick, .joyUprightStick:
+        case .leftStick, .rightStick, .joyStick, .joyUprightStick, .padLeftStick, .padRightStick:
             CGSize(width: Metrics.stickRadius * 2, height: Metrics.stickRadius * 2)
-        case .dpad, .faceButtons, .wiiDpad, .pointDpad, .joyButtons, .joyUprightButtons:
+        case .padScreen:
+            Metrics.touchScreen
+        case .dpad, .faceButtons, .wiiDpad, .pointDpad, .joyButtons, .joyUprightButtons, .padDpad, .padButtons:
             CGSize(width: Metrics.button * 3, height: Metrics.button * 3 + Metrics.crossSpacing * 2)
         case .leftTrigger, .leftShoulder, .rightShoulder, .rightTrigger,
              .view, .menu, .home, .leftStickPress, .rightStickPress,
@@ -449,7 +491,8 @@ private extension ControllerLayout.Control {
              .pointA, .pointB, .pointOne, .pointTwo, .pointMinus, .pointHome, .pointPlus, .pointRecenter,
              .joySL, .joySR, .joyPlus, .joyHome, .joyR, .joyZR, .joyStickPress,
              .joyUprightSL, .joyUprightSR, .joyUprightPlus, .joyUprightHome, .joyUprightR, .joyUprightZR,
-             .joyUprightStickPress:
+             .joyUprightStickPress,
+             .padL, .padR, .padZL, .padZR, .padMinus, .padPlus, .padHome, .padLeftStickPress, .padRightStickPress:
             CGSize(width: Metrics.button, height: Metrics.button)
         }
         return CGSize(width: size.width * scale, height: size.height * scale)
@@ -526,6 +569,106 @@ private struct PressableButton: View {
         pendingRelease = Task {
             try? await Task.sleep(for: remaining)
             if !Task.isCancelled { isPressed = false }
+        }
+    }
+}
+
+/// The GamePad's touchscreen: one finger, as on the real resistive screen, sent as a position from 0 to
+/// 1 across the area, which Cemu maps onto the whole GamePad picture.
+///
+/// Like a button, a touch lasts at least `minimumPress`, so a quick tap still reaches the game.
+private struct TouchScreen: View {
+    @Binding var touch: ControllerState.Touch?
+    let screen: GamePadScreen
+    /// Where the finger is, in the view. Resets on its own when the system cancels the touch.
+    @GestureState private var location: CGPoint?
+    @State private var touchedAt: ContinuousClock.Instant?
+    @State private var pendingRelease: Task<Void, Never>?
+    /// Each new touch gets the next id, so the Mac and Cemu can tell a new tap from a held finger.
+    @State private var nextID: UInt8 = 0
+
+    private static let minimumPress: Duration = .milliseconds(120)
+
+    var body: some View {
+        GeometryReader { proxy in
+            let size = proxy.size
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.secondary.opacity(0.12))
+                .overlay {
+                    // Always there, so the layer survives; hidden until a picture arrives.
+                    VideoDisplayView(display: screen.display)
+                        .background(.black)
+                        .opacity(screen.hasPicture ? 1 : 0)
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 12).strokeBorder(Color.secondary.opacity(0.4))
+                }
+                .overlay {
+                    if let touch {
+                        Circle()
+                            .fill(Color.accentColor.opacity(0.5))
+                            .frame(width: 28, height: 28)
+                            .position(x: touch.normalizedX * size.width, y: touch.normalizedY * size.height)
+                    } else if !screen.hasPicture {
+                        Text(placeholder)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding()
+                    }
+                }
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .updating($location) { drag, location, _ in location = drag.location }
+                )
+                .onChange(of: location) { _, location in
+                    if let location {
+                        move(to: CGPoint(x: location.x / size.width, y: location.y / size.height))
+                    } else {
+                        lift()
+                    }
+                }
+        }
+        .sensoryFeedback(.impact(weight: .light), trigger: touch?.id) { old, new in new != nil && old != new }
+        .accessibilityElement()
+        .accessibilityLabel("GamePad touchscreen")
+        // VoiceOver passes touches straight through, so the screen can still be touched where needed.
+        .accessibilityAddTraits(.allowsDirectInteraction)
+    }
+
+    /// What to do on the Mac to see the GamePad's picture here.
+    private var placeholder: String {
+        switch screen.status {
+        case .off: "Touchscreen\nTo see the GamePad here, turn on “Show the GamePad screen on the phone” in MobiPad on the Mac."
+        case .noWindow: "Touchscreen\nTo see the GamePad here, turn on Options → Separate GamePad view in Cemu."
+        case .noPermission: "Touchscreen\nTo see the GamePad here, allow Screen Recording for MobiPad on the Mac."
+        case .streaming, nil: "Touchscreen"
+        }
+    }
+
+    private func move(to point: CGPoint) {
+        if touchedAt == nil {
+            // A new touch. One still being held for its minimum time ends here.
+            pendingRelease?.cancel()
+            touchedAt = .now
+            nextID &+= 1
+        }
+        touch = .init(id: nextID, normalizedX: point.x, normalizedY: point.y)
+    }
+
+    private func lift() {
+        guard let touchedAt else { return }
+        self.touchedAt = nil
+        let remaining = Self.minimumPress - (.now - touchedAt)
+        guard remaining > .zero else {
+            touch = nil
+            return
+        }
+        pendingRelease = Task {
+            try? await Task.sleep(for: remaining)
+            if !Task.isCancelled { touch = nil }
         }
     }
 }

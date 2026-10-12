@@ -24,7 +24,10 @@ struct StatusView: View {
             Divider()
             serviceStatus
             dolphinSettings
+            cemuSettings
             edenSettings
+            Divider()
+            gamePadScreenSettings
             Divider()
             testPlayerSettings
             Divider()
@@ -74,6 +77,27 @@ struct StatusView: View {
         .font(.caption)
     }
 
+    @ViewBuilder private var cemuSettings: some View {
+        Button("Set Up Cemu") { model.setUpCemu() }
+        Group {
+            switch model.cemuSetup {
+            case nil:
+                Text("Adds controller profiles to Cemu for each player: a Wii U GamePad with touchscreen, a Pro Controller and a Wii Remote.")
+                    .foregroundStyle(.secondary)
+            case .success(.installed):
+                Text("Done. In Cemu, open Options → Input settings. For Controller 1, choose the profile “MobiPad GamePad Player 1” and click Load; on the phone, pick the Wii U GamePad layout. Other players load “MobiPad Pro Controller Player 2” (Classic Controller layout) or “MobiPad Wii Remote Player 2” (a Wii Remote layout), and so on.")
+                    .foregroundStyle(.secondary)
+            case .success(.cemuNotFound):
+                Text("Cemu’s settings weren’t found. Open Cemu once, quit it, and try again.")
+                    .foregroundStyle(.orange)
+            case .failure(let error):
+                Text("Couldn’t set up Cemu: \(error.localizedDescription)")
+                    .foregroundStyle(.red)
+            }
+        }
+        .font(.caption)
+    }
+
     @ViewBuilder private var edenSettings: some View {
         Button("Set Up Eden") { model.setUpEden() }
         Group {
@@ -96,6 +120,37 @@ struct StatusView: View {
             }
         }
         .font(.caption)
+    }
+
+    @ViewBuilder private var gamePadScreenSettings: some View {
+        Toggle("Show the GamePad screen on the phone", isOn: Binding(
+            get: { model.isGamePadScreenEnabled },
+            set: { model.setGamePadScreenEnabled($0) }
+        ))
+        Group {
+            if model.gamePadScreenNeedsPermission {
+                Text("Allow MobiPad under System Settings → Privacy & Security → Screen & System Audio Recording, then quit and reopen MobiPad.")
+                    .foregroundStyle(.orange)
+                Button("Open Privacy Settings") { model.openScreenRecordingSettings() }
+            } else {
+                Text("Records only Cemu’s GamePad window (Options → Separate GamePad view), only while a phone in the Wii U GamePad layout shows it, and sends it encrypted to that phone.")
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .font(.caption)
+        if model.isGamePadScreenEnabled {
+            Picker("Picture quality", selection: Binding(
+                get: { model.gamePadScreenMegabits },
+                set: { model.setGamePadScreenMegabits($0) }
+            )) {
+                ForEach(CompanionModel.gamePadScreenQualities, id: \.megabits) { quality in
+                    Text("\(quality.name) (\(quality.megabits) Mbit/s)").tag(quality.megabits)
+                }
+            }
+            Text("Higher is sharper, but gives the Wi-Fi more to carry. If the picture stutters, go one lower.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
     }
 
     @ViewBuilder private var testPlayerSettings: some View {
@@ -192,6 +247,10 @@ private struct PlayerRow: View {
         var names = Self.buttonNames.filter { state.buttons.contains($0.0) }.map(\.1)
         if state.leftTrigger > 0 { names.append("LT") }
         if state.rightTrigger > 0 { names.append("RT") }
+        // The GamePad's touchscreen, as percentages from the top-left corner.
+        if let touch = state.touch {
+            names.append("Touch \(Int(touch.normalizedX * 100)),\(Int(touch.normalizedY * 100))")
+        }
         return names.isEmpty ? "–" : names.joined(separator: " ")
     }
 

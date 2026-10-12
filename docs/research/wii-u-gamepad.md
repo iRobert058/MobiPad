@@ -1,6 +1,6 @@
 # Research: the Wii U GamePad in MobiPad
 
-*Status: researched, not started. Last updated 2026-10-10.*
+*Status: levels 1 and 2 built (branch `wii-u-gamepad`) and working in Cemu on 2026-10-12: the GamePad layout with touch, the GamePad's picture on the phone, and the Wii Remote (Wii Remote Plus profile) with tilt and the pointer. Last updated 2026-10-12.*
 
 ## Summary
 
@@ -36,6 +36,13 @@ The real GamePad screen is resistive and single-touch, so one touch point is eno
 
 Without the picture on the phone, level 1 suits menus and large buttons, with Cemu's GamePad view open on the Mac (Separate GamePad View, or both screens in one window). Precise touch (drawing, picking a spot on a map) needs level 2.
 
+### As built (2026-10-12)
+
+- `ControllerState.touch`: an id that changes with every new touch, and x and y as 0–65535 from the top-left. On the wire it's 5 bytes after the optional motion block; the four possible lengths of a state (16, 21, 40, 45 bytes) all differ, so the protocol version stays 3 and a state without touch is unchanged. An older Mac app drops states with touch, so the GamePad's buttons stop while its touchscreen is touched (*inferred* from the parser).
+- DSU: `tpad1` = active, the touch id, `x * 1919`, `y * 941`. Only the GamePad layout sends touch, so the other layouts stay as they were in Dolphin and Eden.
+- The phone: a 16:9 touch area of 427 × 240 points between the controls, resizable like any control. A touch lasts at least 120 ms like a button press, so a quick tap reaches the game. Motion is sent as on the Classic Controller (the screen's axes).
+- Set Up Cemu writes named profiles (`MobiPad GamePad Player 1` to 4, `MobiPad Pro Controller Player 1` to 4) to `controllerProfiles/`, which Cemu's Input settings list, and leaves `controller0.xml` to `controller3.xml` alone.
+
 ### Not available through DSU
 
 - **Rumble:** Cemu's DSU client has none, and rumble was dropped from MobiPad on 2026-10-06 because of input lag anyway.
@@ -61,6 +68,42 @@ Pipeline: Cemu's GamePad window → capture on the Mac → hardware encode → W
 - **Network.** Same as the controls: client isolation (the UU Wi-Fi) blocks it, a home network or the iPhone's Personal Hotspot works. A video stream needs much more bandwidth than input (*inferred*: a few Mbit/s).
 - **Battery and heat** on the phone from constant decoding and a bright screen (*inferred*).
 - **Size.** Level 2 touches both apps, the protocol and a new Mac permission. It's a large task in the sense of the global instructions: several sessions, with progress notes.
+
+### As built (2026-10-12)
+
+- **Messages:** three sealed `SessionMessage`s: `video` (Mac → phone, a `VideoFragment`), `videoRequest` (phone → Mac, every second while the GamePad layout shows its touchscreen, or at once for a keyframe), `videoStatus` (Mac → phone, in answer: streaming, off, no window, no permission). Video uses the session's Mac-to-phone key with random nonces, like everything else. The protocol version stays 3: an older Mac drops the requests, an older phone never asks.
+- **Mac:** `GamePadStreamer` captures only while the menu's switch is on (off by default) and at least one phone has asked in the last 3 seconds. `CemuWindowSource` captures the window owned by `info.cemu.Cemu` whose title starts with "GamePad View", cropped to the middle 16:9 below an assumed 28-point title bar, at 854 × 480 and up to 60 fps. A still screen is re-sent once a second, so a phone that lost a frame notices and asks for a keyframe.
+- **Phone:** `VideoPlayer` decodes on its own queue, so the controller input on the link's queue never waits for video, and an `AVSampleBufferDisplayLayer` shows each picture at once. The touchscreen area is the picture, so a touch lands where it's seen.
+
+### Measuring the delay
+
+`tools/StreamProbe` streams a picture to the phone and measures the delay as a loop on the Mac's clock. A square in the corner of the picture switches between black and white. The phone decodes each frame, and when it sees the square switch it tells the Mac. The time from the switch to that message is one sample. That covers capture (with `--source window`), encoding, Wi-Fi both ways and decoding. It misses the phone's display, which adds up to one refresh (8 ms at 120 Hz, 17 ms at 60 Hz), and includes the phone's reply, which a real stream doesn't need, so the two roughly cancel out (*inferred*).
+
+On one Mac (2026-10-10, generated picture at 854 × 480 and 60 fps), without Wi-Fi:
+
+| Where the phone runs  | Median | p90    | p99     | Lost frames |
+|-----------------------|--------|--------|---------|-------------|
+| StreamProbe `--phone` | 6.9 ms | 8.2 ms | 8.5 ms  | 0 of 1,737  |
+| iPhone Simulator      | 5.8 ms | 8.1 ms | 12.7 ms | 0 of 1,677  |
+
+On the iPhone 16 Pro over a home Wi-Fi network (2026-10-12, same picture and settings), run twice, once with the phone on a cable to the Mac and once without. The numbers match, so the video took the Wi-Fi both times (*inferred*):
+
+| Run      | Samples | Median  | p90     | p99     | Max      | Lost frames |
+|----------|---------|---------|---------|---------|----------|-------------|
+| Wireless | 307     | 14.9 ms | 20.6 ms | 79.7 ms | 159.3 ms | 0 of 8,817  |
+| Cable    | 304     | 15.0 ms | 19.5 ms | 82.3 ms | 118.4 ms | 0 of 8,697  |
+
+Decoding on the phone took about 1.9 ms. So Wi-Fi adds about 8 ms to the loop. Nine in ten switches arrive within about 20 ms, but about one in a hundred takes 80 ms or more: short Wi-Fi hiccups, during which the picture freezes for a moment rather than breaking up, since no frames were lost. The first run's 3 missed switches (none seen within a second) are unexplained.
+
+Encoding takes about 2–4 ms and decoding about 1 ms. Keyframes are about 40–48 KB (up to 60 datagrams), other frames about 2.5 KB. The generated picture is simpler than a game, so a game will use more of the 6 Mbit/s (*inferred*).
+
+To measure on the iPhone:
+
+1. Put the Mac and the iPhone on a home network or the iPhone's Personal Hotspot (not the UU Wi-Fi: it blocks devices from reaching each other).
+2. On the Mac: `swift run -c release --package-path tools/StreamProbe StreamProbe`
+3. Run the iPhone app from Xcode (a debug build), and on the start screen tap the video button in the toolbar (Stream Test), then the Mac.
+4. Keep the phone on that screen. The Mac prints the delay every 5 seconds and a result after 300 samples (Ctrl-C stops early).
+5. Optional: `--source window` captures a window of the tool's own, as Cemu's window would be captured. `--capture "GamePad"` streams Cemu's GamePad window (its exact title is unverified; the tool lists the windows it can see), to see how a game feels (no measurement). Both need Screen Recording permission for the terminal app.
 
 ## Not feasible
 

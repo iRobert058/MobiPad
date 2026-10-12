@@ -31,11 +31,13 @@ MobiPadKit/            Swift package with all the logic, testable without Xcode
   MobiPadNetwork       phone side (ControllerLink, MacBrowser) and Mac side (ControllerHost)
   MobiPadDSU           DSU server that Dolphin and Cemu connect to
   MobiPadKeyboard      Player 1 as key presses, for Ryujinx
+  MobiPadVideo         the Wii U GamePad screen: capturing Cemu's window, H.264, datagrams, playing it on the phone
 iOS/                   iPhone app: name, find a Mac, then the controller
 macOS/                 Mac menu bar app: approvals, player slots, latency, live input
 Shared/AppIcon.icon    app icon for both apps, with light, dark and clear/tinted versions; open it in Icon Composer (comes with Xcode) to edit
 Shared/mobipad-app-icon/  the icon's source layers per mode, alternatives and previews
 docs/research/         technical research and decisions
+tools/StreamProbe/     development tool: measures the delay of streaming a picture to the phone
 project.yml            XcodeGen spec that generates MobiPad.xcodeproj
 ```
 
@@ -56,7 +58,7 @@ You need Xcode (free, from the Mac App Store) and your Apple ID. A paid develope
    To try the iPhone app without a phone, run the **MobiPad** scheme on an iPhone Simulator instead. It finds the Mac app the same way. Turn the Simulator to landscape with ⌘→.
 5. In the iPhone app, type your name and pick your Mac. The first time, the Mac asks **"Allow … to connect?"**. After you click Allow, the phone shows up as a player and is remembered from then on.
 
-### Classic Controller, a Wii Remote or a Joy-Con
+### Classic Controller, a Wii Remote, a Joy-Con or the Wii U GamePad
 
 Choose the controller on the start screen, or with the menu next to **Edit Layout** on the controller screen:
 
@@ -66,8 +68,9 @@ Choose the controller on the start screen, or with the menu next to **Edit Layou
 
 - **Joy-Con (sideways):** a single right Joy-Con held sideways, as a small controller: the stick under your left thumb, the buttons under your right, SL and SR as shoulder buttons. Tilting steers, as in Mario Kart 8. The buttons show the letters games read them as when a Joy-Con is sideways (the right one is A).
 - **Joy-Con (upright):** a single right Joy-Con held upright in one hand, its top toward the TV, as in Switch Sports. The screen turns upright, with R and ZR at the top, then +, the buttons, the stick and Home.
+- **Wii U GamePad:** for Wii U games in [Cemu](#cemu-wii-u). Two sticks, the D-pad and A/B/X/Y around a touchscreen area in the middle, L, R, ZL and ZR in the top corners, and tilt for gyro aiming. The area shows the GamePad's picture, streamed from Cemu by the Mac (see [Cemu](#cemu-wii-u) to turn it on), and touching it touches the GamePad's screen at the same spot. A/B/X/Y sit as on the GamePad, A on the right.
 
-Both Wii Remotes are for Wii games in Dolphin (see below), and you can switch between them mid-game, for example between Wii Party's minigames. The Joy-Cons are for Switch games in [Eden](#eden-switch). All four need the Mac app from the same version: an older Mac app ignores the phone while it sends motion.
+Both Wii Remotes are for Wii games in Dolphin (see below), and you can switch between them mid-game, for example between Wii Party's minigames. The Joy-Cons are for Switch games in [Eden](#eden-switch). All of these need the Mac app from the same version: an older Mac app ignores the phone while it sends motion, or while the GamePad's touchscreen is touched.
 
 ### Changing the controller layout
 
@@ -102,9 +105,19 @@ The **Classic Controller** profiles match buttons by name: A, B, X, Y; LB/RB are
 
 **By hand**, for example for a Nunchuk: in Controllers → **Alternate Input Sources**, enable **DSU Client** and add a server: IP `127.0.0.1`, port `26760`. Configure the emulated controller, pick the DSU device, then map each input by clicking it and pressing the matching button on the phone. Dolphin uses PlayStation names: **Cross = A, Circle = B, Square = X, Triangle = Y, L1/R1 = LB/RB, L2/R2 = LT/RT**. DSU device 0 is Player 1, device 1 is Player 2, and so on.
 
-### Cemu
+### Cemu (Wii U)
 
-In Input settings, choose the **DSUController** API, point it at `127.0.0.1`, port `26760`, and pick the controller for each player. Cemu reads the same DSU data as Dolphin.
+1. In the Mac menu, click **Set Up Cemu**. It adds three profiles for each player: **MobiPad GamePad Player 1** (a Wii U GamePad, for the phone's Wii U GamePad layout), **MobiPad Pro Controller Player 1** (a Wii U Pro Controller, for the Classic Controller layout) and **MobiPad Wii Remote Player 1** (for either Wii Remote layout), and so on for players 2 to 4. It doesn't change your current controller settings.
+2. In Cemu, open **Options → Input settings**. For **Controller 1**, choose **MobiPad GamePad Player 1** under Profile and click **Load**. For more players, load **MobiPad Pro Controller Player 2** or **MobiPad Wii Remote Player 2** on Controller 2, and so on. Most games use one GamePad; the others play on Pro Controllers or Wii Remotes.
+3. To see the GamePad's screen on the phone, turn on **Options → Separate GamePad view** in Cemu, and **Show the GamePad screen on the phone** in the MobiPad menu on the Mac. The first time, macOS asks to allow MobiPad to record the screen: allow it under System Settings → Privacy & Security → Screen & System Audio Recording, then quit and reopen MobiPad. The phone's touchscreen area says what's missing until the picture appears.
+
+**Picture quality** in the Mac menu sets the bit rate: Standard (6 Mbit/s), High (12) or Very high (20). Higher is sharper but gives the Wi-Fi more to carry; if the picture stutters, go one lower. The picture takes about 15 ms from the Mac to the phone on a home network (measured with a test picture). Now and then Wi-Fi holds it up for a moment, so it freezes briefly; the buttons don't wait for it. Keep Cemu's GamePad window roughly 16:9: MobiPad sends the middle 16:9 part of it, so a very different shape cuts off part of the picture or adds black bars.
+
+The profiles map the buttons by position, as on a Wii U: on the phone's Classic Controller layout, the right face button (B) is the Wii U's A and the bottom one (A) is its B, and LT/RT are ZL/ZR. Cemu doesn't read Home over DSU, so it has no mapping, and the GamePad layout starts with Home hidden. While the phone touches the touchscreen, Cemu ignores mouse clicks on the GamePad view.
+
+The **Wii Remote** profile is a Wii Remote Plus (MotionPlus on, which games like Nintendo Land need for motion). It takes the phone's Wii Remote buttons as they are (A, B, 1, 2, −, + and the D-pad) and its motion. Cemu reads a Wii Remote's pointer as a position rather than working it out from the motion, as Dolphin does, so in the pointing layout the phone works out where it points from its gyroscope and sends that: turn the phone to move the pointer, and tap **Center** while aiming at the middle of the TV to recenter it. Turning about 25° moves the pointer across the whole screen. The sideways layout sends no pointer.
+
+**By hand:** in Input settings, choose the **DSUController** API, point it at `127.0.0.1`, port `26760`, and pick the controller for each player. Cemu reads the same DSU data as Dolphin.
 
 ### Eden (Switch)
 
@@ -154,6 +167,8 @@ Not covered:
 - The approval prompt shows whatever name the phone sends, and any device on your network can ask. Only click Allow when you're expecting a phone.
 - The phone keeps its key in the app's settings, which are included in backups of the phone. Someone with a backup could act as that phone.
 
+The GamePad screen: with **Show the GamePad screen on the phone** on, MobiPad records the screen, so macOS asks for the Screen Recording permission. It captures only Cemu's GamePad window (by Cemu's app ID and the window's title), only while an approved, connected phone in the Wii U GamePad layout asks for it, and stops a few seconds after the phone stops asking. The picture travels encrypted like the input, to that phone only. The switch is off until you turn it on. Like the input, the phone doesn't check it's talking to the real Mac, so a fake Mac could send it a picture of its own.
+
 ## Debugging
 
 - **Mac menu:** shows each player's name, latency and live sticks and buttons. The test controller (above) separates emulator problems from phone problems.
@@ -176,6 +191,7 @@ The tests include real UDP round-trips on localhost:
 - an impostor with a copied public key
 - a button press travelling all the way to a Dolphin-style DSU client
 - tilt from the phone reaching that client as DSU motion
+- the Mac's hardware H.264 encoder and decoder, with a marker that survives compression, and frames that survive lost and reordered datagrams
 
 With only the Command Line Tools installed (no Xcode), point `swift test` at Swift Testing:
 
@@ -195,6 +211,10 @@ Tried on real hardware:
 - Set Up Dolphin's Wii Remote profile loads in Dolphin. In the Wii Menu the pointer follows the phone in every direction, held upright, and A selects.
 - Mario Kart Wii: steering by tilting the phone sideways works.
 - Layout editing and dark mode draw correctly in the Simulator.
+- The Wii U GamePad layout in the Simulator: taps and drags on its touchscreen, A and ZR reach a Mac test host as the touch point and the buttons Cemu's profile expects.
+- The GamePad screen's stream (a test picture, see [docs/research/wii-u-gamepad.md](docs/research/wii-u-gamepad.md)) reaches an iPhone 16 Pro on home Wi-Fi in about 15 ms, and nine in ten frames within about 20 ms.
+- Cemu (2026-10-12): the Wii U GamePad layout with its touchscreen (taps and swipes), the GamePad's picture streamed to the phone, and the Wii Remote with tilt and the pointer.
+- In the Simulator, with a test host streaming a test picture: the picture fills the GamePad's touchscreen area, touches on it still reach the Mac, and the area explains when the Mac's switch is off or Cemu's GamePad window is missing.
 
 Covered by the package tests (`swift test`):
 - **Connecting (FR-01, FR-02, CR-01, CR-02):** Bonjour discovery, connecting and disconnecting.
@@ -207,9 +227,13 @@ Covered by the package tests (`swift test`):
 - **Set Up Dolphin (UX-01):** the DSU server entry and the GameCube, Wii Remote and Classic Controller profiles, with their key and input names checked against Dolphin's source.
 - **Set Up Eden:** turning on the UDP controller, the server list, and the Pro Controller and Joy-Con profiles, checked against Eden's key names and its own automatic mapping.
 - **Joy-Con motion:** the sideways turn into the Joy-Con's axes.
+- **Wii U GamePad touch:** the touch point in the wire format, and as the DSU touch point Cemu reads, from a phone all the way to a DSU client.
+- **Set Up Cemu:** the GamePad, Pro Controller and Wii Remote profiles, the first two with the same mappings as profiles Cemu loaded.
+- **The pointer for Cemu's Wii Remote:** turning left and lifting the phone move it left and up, around the room's axes however the phone is tilted, and it stays on screen.
+- **The GamePad screen:** H.264 through the Mac's hardware encoder and decoder, split into datagrams and recovering from lost ones; the encrypted video messages between phone and Mac; streaming only while asked and switched on, stopping when nobody asks, telling the phone what's missing, and resending a still picture; finding only Cemu's GamePad window.
 - **Motion (both Wii Remotes):** the motion in the wire format, turning Core Motion readings into the controller's axes, the sideways turn (checked against Dolphin's own Sideways option), and the DSU motion fields as Dolphin reads them.
 
-Not tried yet: Cemu, Eden and the Joy-Con layouts (button letters and tilt in Switch games), Ryujinx with keyboard output, four players at once, haptics, the wider touch area around buttons (so a thumb partly on 2 still accelerates), moving and resizing controls by touch, and latency figures on a real network.
+Not tried yet: the High and Very high picture qualities, battery and heat while the picture streams, Eden and the Joy-Con layouts (button letters and tilt in Switch games), Ryujinx with keyboard output, four players at once, haptics, the wider touch area around buttons (so a thumb partly on 2 still accelerates), moving and resizing controls by touch, and latency figures on a real network.
 
 How the motion controls were built and tested, with the measurements behind the choices: [TILT_NOTES.md](TILT_NOTES.md).
 

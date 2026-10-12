@@ -122,7 +122,8 @@ extension DSU {
         payload += analogButtonOrder.map { buttons.contains($0) ? 255 : 0 }
         payload.append(state.rightTrigger)
         payload.append(state.leftTrigger)
-        payload += [UInt8](repeating: 0, count: 12) // two inactive touches
+        payload += touchPoint(state.touch)
+        payload += [UInt8](repeating: 0, count: 6) // the second touch, never active
         payload.appendLittleEndian(timestampMicroseconds)
         for value in motionFields(state.motion) {
             payload.appendLittleEndian(value.bitPattern)
@@ -172,6 +173,19 @@ extension DSU {
             // around y, the right edge goes down.
             rotation.x, -rotation.z, rotation.y,
         ]
+    }
+
+    /// The DualShock 4 touchpad's resolution, which DSU touch coordinates use. Cemu divides by it to get
+    /// fractions of the Wii U GamePad's touchscreen (`DSUController::get_position`).
+    static let touchpadSize = (width: 1920, height: 942)
+
+    /// One DSU touch point: active, id, x and y (little-endian 16-bit), 6 bytes.
+    static func touchPoint(_ touch: ControllerState.Touch?) -> [UInt8] {
+        guard let touch else { return [0, 0, 0, 0, 0, 0] }
+        var bytes: [UInt8] = [1, touch.id]
+        bytes.appendLittleEndian(UInt16((touch.normalizedX * Double(touchpadSize.width - 1)).rounded()))
+        bytes.appendLittleEndian(UInt16((touch.normalizedY * Double(touchpadSize.height - 1)).rounded()))
+        return bytes
     }
 
     /// Maps -32767...32767 to 1...255 with 128 as center. Positive y is up in both.

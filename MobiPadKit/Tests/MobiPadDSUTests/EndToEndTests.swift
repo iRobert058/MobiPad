@@ -81,4 +81,50 @@ struct EndToEndTests {
         #expect(motion.up == 1)
         #expect(motion.pitchUp == 45)
     }
+
+    /// A touch on the phone's GamePad screen, with tilt, reaches the emulator as the first DSU touch point
+    /// (Cemu's GamePad touchscreen), and lifting the finger makes it inactive again.
+    @Test func touchOnPhoneReachesEmulator() async throws {
+        let dsuServer = DSUServer(port: 0)
+        let dsuPort = try await dsuServer.start()
+        defer { dsuServer.stop() }
+        let identity = SecureChannel.PrivateKey()
+        let host = ControllerHost(service: nil, approvedPhones: [identity.publicKey.rawRepresentation]) { _ in
+        } output: { slot, state in
+            if let state { dsuServer.update(slot: slot, state: state) } else { dsuServer.disconnect(slot: slot) }
+        }
+        let hostPort = try await host.start()
+        defer { host.stop() }
+
+        let link = ControllerLink(
+            to: .hostPort(host: "127.0.0.1", port: NWEndpoint.Port(rawValue: hostPort)!),
+            identity: identity,
+            name: "Phone"
+        ) { _ in }
+        link.connect()
+        defer { link.disconnect() }
+
+        let emulator = UDPClient(port: dsuPort)
+        try await emulator.send(ClientRequest.subscribe(slot: 0))
+        while host.players().isEmpty {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        let tilt = ControllerState.Motion(acceleration: .init(x: 0, y: 0, z: 1), rotationRate: .zero)
+        link.send(ControllerState(motion: tilt, touch: .init(id: 3, normalizedX: 0.25, normalizedY: 0.75)))
+
+        var message = try ServerMessage(await emulator.receive())
+        while message.bytes[56] == 0 {
+            message = try ServerMessage(await emulator.receive())
+        }
+        #expect(message.bytes[57] == 3)
+        #expect(message.bytes.readLittleEndian(UInt16.self, at: 58) == 480) // a quarter of 1920
+        #expect(message.bytes.readLittleEndian(UInt16.self, at: 60) == 706) // three quarters of 942
+        #expect(try DolphinMotion(message).up == 1)
+
+        link.send(ControllerState(motion: tilt))
+        while message.bytes[56] != 0 {
+            message = try ServerMessage(await emulator.receive())
+        }
+        #expect(message.bytes[56...61].allSatisfy { $0 == 0 })
+    }
 }

@@ -222,6 +222,58 @@ struct ControllerNetworkTests {
 // MARK: - Helpers
 
 /// A host on a free port with short timings, and phones that connect to it.
+/// The GamePad screen's video between a phone that asks for it and the host.
+@Suite(.timeLimit(.minutes(1)))
+struct VideoNetworkTests {
+    @Test func phoneAsksForVideoAndGetsIt() async throws {
+        let rig = try await Rig()
+        let requests = Recorder<(slot: Int, keyframe: Bool)>()
+        rig.host.onVideoRequest { slot, keyframe in requests.append((slot, keyframe)) }
+        let phone = rig.phone()
+        try await phone.waitForStatus(.connected(slot: 0))
+
+        let events = Recorder<ControllerLink.VideoEvent>()
+        phone.link.receiveVideo { events.append($0) }
+        // Asking starts with a keyframe request, so the picture can start at once.
+        try await requests.wait { $0.contains { $0.slot == 0 && $0.keyframe } }
+
+        rig.host.sendVideoStatus(.streaming, to: 0)
+        rig.host.sendVideo(Data([1, 2, 3]), to: [0])
+        rig.host.sendVideo(Data([9]), to: [1]) // nobody there
+        try await events.wait { $0 == [.status(.streaming), .fragment(Data([1, 2, 3]))] }
+
+        phone.link.requestKeyframe()
+        try await requests.wait { $0.filter(\.keyframe).count == 2 }
+    }
+
+    /// The Mac streams only while the phone keeps asking, once a second.
+    @Test func phoneKeepsAskingUntilItStops() async throws {
+        let rig = try await Rig()
+        let requests = Recorder<(slot: Int, keyframe: Bool)>()
+        rig.host.onVideoRequest { slot, keyframe in requests.append((slot, keyframe)) }
+        let phone = rig.phone()
+        try await phone.waitForStatus(.connected(slot: 0))
+
+        phone.link.receiveVideo { _ in }
+        try await requests.wait { $0.contains { !$0.keyframe } }
+        phone.link.receiveVideo(nil)
+        try await Task.sleep(for: .milliseconds(100))
+        let count = requests.snapshot.count
+        try await Task.sleep(for: .milliseconds(1_200))
+        #expect(requests.snapshot.count == count)
+    }
+
+    /// A phone that asked before it was let in asks again as soon as it's connected.
+    @Test func asksOnceConnected() async throws {
+        let rig = try await Rig()
+        let requests = Recorder<(slot: Int, keyframe: Bool)>()
+        rig.host.onVideoRequest { slot, keyframe in requests.append((slot, keyframe)) }
+        let phone = rig.phone()
+        phone.link.receiveVideo { _ in }
+        try await requests.wait { $0.first?.keyframe == true }
+    }
+}
+
 private final class Rig: Sendable {
     let host: ControllerHost
     let port: UInt16

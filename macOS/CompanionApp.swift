@@ -2,6 +2,7 @@ import AppKit
 import MobiPadDSU
 import MobiPadKeyboard
 import MobiPadNetwork
+import MobiPadVideo
 import SwiftUI
 
 /// Menu bar app, so it keeps running in the background while a game has focus (DR-02).
@@ -29,6 +30,7 @@ final class CompanionModel {
 
     let host: ControllerHost
     private let dsuServer: DSUServer
+    private let gamePadStreamer: GamePadStreamer
     private let keyboard: KeyboardOutput
     private(set) var hostStatus = ServiceStatus.starting
     private(set) var dsuStatus = ServiceStatus.starting
@@ -39,14 +41,26 @@ final class CompanionModel {
     private(set) var testPlayerFailed = false
     /// The result of the last click on Set Up Dolphin.
     private(set) var dolphinSetup: Result<DolphinSetup.Outcome, any Error>?
+    /// The result of the last click on Set Up Cemu.
+    private(set) var cemuSetup: Result<CemuSetup.Outcome, any Error>?
     /// The result of the last click on Set Up Eden.
     private(set) var edenSetup: Result<EdenSetup.Outcome, any Error>?
+    /// Whether phones in the Wii U GamePad layout get Cemu's GamePad window. Off until the player turns
+    /// it on, so the Mac never starts recording the screen on its own.
+    private(set) var isGamePadScreenEnabled: Bool
+    /// The GamePad picture's bit rate, in megabits a second.
+    private(set) var gamePadScreenMegabits: Int
+    static let gamePadScreenQualities = [(name: "Standard", megabits: 6), (name: "High", megabits: 12), (name: "Very high", megabits: 20)]
+    /// Screen Recording isn't allowed yet (or wasn't when the switch was turned on).
+    private(set) var gamePadScreenNeedsPermission = false
     /// Identity key (base64) → the name the phone had when it was approved.
     private(set) var approvedPhones: [String: String]
     private var approvalQueue: [ControllerHost.ApprovalRequest] = []
     private var isAskingForApproval = false
 
     private static let approvedPhonesKey = "approvedPhones"
+    private static let gamePadScreenKey = "gamePadScreenEnabled"
+    private static let gamePadScreenMegabitsKey = "gamePadScreenMegabits"
 
     init() {
         let dsuServer = DSUServer()
@@ -56,7 +70,7 @@ final class CompanionModel {
         self.dsuServer = dsuServer
         self.keyboard = keyboard
         self.approvedPhones = approvedPhones
-        host = ControllerHost(approvedPhones: Set(approvedPhones.keys.compactMap { Data(base64Encoded: $0) })) { request in
+        let host = ControllerHost(approvedPhones: Set(approvedPhones.keys.compactMap { Data(base64Encoded: $0) })) { request in
             Task { @MainActor in relay.model?.askForApproval(request) }
         } output: { slot, state in
             if let state {
@@ -68,6 +82,25 @@ final class CompanionModel {
                 keyboard.update(state)
             }
         }
+        self.host = host
+
+        // Cemu's GamePad window, for phones in the Wii U GamePad layout.
+        let streamer = GamePadStreamer(source: CemuWindowSource()) { fragment, slots in
+            host.sendVideo(fragment, to: slots)
+        } sendStatus: { status, slot in
+            host.sendVideoStatus(status, to: slot)
+        }
+        host.onVideoRequest { slot, keyframe in streamer.request(slot: slot, keyframe: keyframe) }
+        gamePadStreamer = streamer
+        let isEnabled = UserDefaults.standard.bool(forKey: Self.gamePadScreenKey)
+        let storedMegabits = UserDefaults.standard.integer(forKey: Self.gamePadScreenMegabitsKey)
+        let megabits = Self.gamePadScreenQualities.contains { $0.megabits == storedMegabits } ? storedMegabits : 6
+        isGamePadScreenEnabled = isEnabled
+        gamePadScreenMegabits = megabits
+        gamePadScreenNeedsPermission = isEnabled && !CGPreflightScreenCaptureAccess()
+        streamer.setBitsPerSecond(megabits * 1_000_000)
+        streamer.setEnabled(isEnabled)
+
         relay.model = self
         Task { await start() }
     }
@@ -94,12 +127,39 @@ final class CompanionModel {
         }
     }
 
+    /// Turning it on asks macOS for Screen Recording the first time; macOS shows its own prompt.
+    func setGamePadScreenEnabled(_ enabled: Bool) {
+        isGamePadScreenEnabled = enabled
+        UserDefaults.standard.set(enabled, forKey: Self.gamePadScreenKey)
+        gamePadStreamer.setEnabled(enabled)
+        gamePadScreenNeedsPermission = enabled && !CGPreflightScreenCaptureAccess()
+        if gamePadScreenNeedsPermission {
+            gamePadScreenNeedsPermission = !CGRequestScreenCaptureAccess()
+        }
+    }
+
+    func setGamePadScreenMegabits(_ megabits: Int) {
+        gamePadScreenMegabits = megabits
+        UserDefaults.standard.set(megabits, forKey: Self.gamePadScreenMegabitsKey)
+        gamePadStreamer.setBitsPerSecond(megabits * 1_000_000)
+    }
+
+    func openScreenRecordingSettings() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
     func setUpDolphin() {
         dolphinSetup = Result {
             try DolphinSetup.install {
                 !NSRunningApplication.runningApplications(withBundleIdentifier: "org.dolphin-emu.dolphin").isEmpty
             }
         }
+    }
+
+    func setUpCemu() {
+        cemuSetup = Result { try CemuSetup.install() }
     }
 
     func setUpEden() {
