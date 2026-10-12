@@ -213,6 +213,7 @@ Tried on real hardware:
 - Layout editing and dark mode draw correctly in the Simulator.
 - The Wii U GamePad layout in the Simulator: taps and drags on its touchscreen, A and ZR reach a Mac test host as the touch point and the buttons Cemu's profile expects.
 - The GamePad screen's stream (a test picture, see [docs/research/wii-u-gamepad.md](docs/research/wii-u-gamepad.md)) reaches an iPhone 16 Pro on home Wi-Fi in about 15 ms, and nine in ten frames within about 20 ms.
+- Cemu (2026-10-12): the Wii U GamePad layout with its touchscreen (taps and swipes), the GamePad's picture streamed to the phone, and the Wii Remote with tilt and the pointer.
 - In the Simulator, with a test host streaming a test picture: the picture fills the GamePad's touchscreen area, touches on it still reach the Mac, and the area explains when the Mac's switch is off or Cemu's GamePad window is missing.
 
 Covered by the package tests (`swift test`):
@@ -232,7 +233,7 @@ Covered by the package tests (`swift test`):
 - **The GamePad screen:** H.264 through the Mac's hardware encoder and decoder, split into datagrams and recovering from lost ones; the encrypted video messages between phone and Mac; streaming only while asked and switched on, stopping when nobody asks, telling the phone what's missing, and resending a still picture; finding only Cemu's GamePad window.
 - **Motion (both Wii Remotes):** the motion in the wire format, turning Core Motion readings into the controller's axes, the sideways turn (checked against Dolphin's own Sideways option), and the DSU motion fields as Dolphin reads them.
 
-Not tried yet: capturing Cemu's real GamePad window (and whether the title bar crop is right), the Wii Remote in Cemu (buttons, motion, the pointer), battery and heat while the picture streams, Eden and the Joy-Con layouts (button letters and tilt in Switch games), Ryujinx with keyboard output, four players at once, haptics, the wider touch area around buttons (so a thumb partly on 2 still accelerates), moving and resizing controls by touch, and latency figures on a real network.
+Not tried yet: the High and Very high picture qualities, battery and heat while the picture streams, Eden and the Joy-Con layouts (button letters and tilt in Switch games), Ryujinx with keyboard output, four players at once, haptics, the wider touch area around buttons (so a thumb partly on 2 still accelerates), moving and resizing controls by touch, and latency figures on a real network.
 
 How the motion controls were built and tested, with the measurements behind the choices: [TILT_NOTES.md](TILT_NOTES.md).
 

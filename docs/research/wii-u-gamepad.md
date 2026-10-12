@@ -1,6 +1,6 @@
 # Research: the Wii U GamePad in MobiPad
 
-*Status: levels 1 and 2 built (branch `wii-u-gamepad`). Level 1 works in Cemu (2026-10-12). Level 2 works with a test picture in the Simulator; not yet tried with Cemu's real window. Last updated 2026-10-12.*
+*Status: levels 1 and 2 built (branch `wii-u-gamepad`) and working in Cemu on 2026-10-12: the GamePad layout with touch, the GamePad's picture on the phone, and the Wii Remote (Wii Remote Plus profile) with tilt and the pointer. Last updated 2026-10-12.*
 
 ## Summary
 
