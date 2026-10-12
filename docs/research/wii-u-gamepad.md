@@ -1,6 +1,6 @@
 # Research: the Wii U GamePad in MobiPad
 
-*Status: measuring the stream's delay (step 1, branch `wii-u-gamepad`). Last updated 2026-10-10.*
+*Status: the stream's delay is measured (step 1, branch `wii-u-gamepad`); deciding on level 1. Last updated 2026-10-12.*
 
 ## Summary
 
@@ -72,6 +72,15 @@ On one Mac (2026-10-10, generated picture at 854 × 480 and 60 fps), without Wi-
 |-----------------------|--------|--------|---------|-------------|
 | StreamProbe `--phone` | 6.9 ms | 8.2 ms | 8.5 ms  | 0 of 1,737  |
 | iPhone Simulator      | 5.8 ms | 8.1 ms | 12.7 ms | 0 of 1,677  |
+
+On the iPhone 16 Pro over a home Wi-Fi network (2026-10-12, same picture and settings), run twice, once with the phone on a cable to the Mac and once without. The numbers match, so the video took the Wi-Fi both times (*inferred*):
+
+| Run      | Samples | Median  | p90     | p99     | Max      | Lost frames |
+|----------|---------|---------|---------|---------|----------|-------------|
+| Wireless | 307     | 14.9 ms | 20.6 ms | 79.7 ms | 159.3 ms | 0 of 8,817  |
+| Cable    | 304     | 15.0 ms | 19.5 ms | 82.3 ms | 118.4 ms | 0 of 8,697  |
+
+Decoding on the phone took about 1.9 ms. So Wi-Fi adds about 8 ms to the loop. Nine in ten switches arrive within about 20 ms, but about one in a hundred takes 80 ms or more: short Wi-Fi hiccups, during which the picture freezes for a moment rather than breaking up, since no frames were lost. The first run's 3 missed switches (none seen within a second) are unexplained.
 
 Encoding takes about 2–4 ms and decoding about 1 ms. Keyframes are about 40–48 KB (up to 60 datagrams), other frames about 2.5 KB. The generated picture is simpler than a game, so a game will use more of the 6 Mbit/s (*inferred*).
 
