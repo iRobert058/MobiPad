@@ -39,6 +39,8 @@ final class CompanionModel {
     private(set) var testPlayerFailed = false
     /// The result of the last click on Set Up Dolphin.
     private(set) var dolphinSetup: Result<DolphinSetup.Outcome, any Error>?
+    /// The result of the last click on Set Up Cemu.
+    private(set) var cemuSetup: Result<CemuSetup.Outcome, any Error>?
     /// The result of the last click on Set Up Eden.
     private(set) var edenSetup: Result<EdenSetup.Outcome, any Error>?
     /// Identity key (base64) → the name the phone had when it was approved.
@@ -100,6 +102,10 @@ final class CompanionModel {
                 !NSRunningApplication.runningApplications(withBundleIdentifier: "org.dolphin-emu.dolphin").isEmpty
             }
         }
+    }
+
+    func setUpCemu() {
+        cemuSetup = Result { try CemuSetup.install() }
     }
 
     func setUpEden() {

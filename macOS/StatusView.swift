@@ -24,6 +24,7 @@ struct StatusView: View {
             Divider()
             serviceStatus
             dolphinSettings
+            cemuSettings
             edenSettings
             Divider()
             testPlayerSettings
@@ -68,6 +69,27 @@ struct StatusView: View {
                     .foregroundStyle(.orange)
             case .failure(let error):
                 Text("Couldn’t set up Dolphin: \(error.localizedDescription)")
+                    .foregroundStyle(.red)
+            }
+        }
+        .font(.caption)
+    }
+
+    @ViewBuilder private var cemuSettings: some View {
+        Button("Set Up Cemu") { model.setUpCemu() }
+        Group {
+            switch model.cemuSetup {
+            case nil:
+                Text("Adds controller profiles to Cemu: a Wii U GamePad with touchscreen, and a Pro Controller for each player.")
+                    .foregroundStyle(.secondary)
+            case .success(.installed):
+                Text("Done. In Cemu, open Options → Input Settings. For Controller 1, choose the profile “MobiPad GamePad Player 1” and click Load; on the phone, pick the Wii U GamePad layout. Other players load “MobiPad Pro Controller Player 2”, and so on, and use the Classic Controller layout.")
+                    .foregroundStyle(.secondary)
+            case .success(.cemuNotFound):
+                Text("Cemu’s settings weren’t found. Open Cemu once, quit it, and try again.")
+                    .foregroundStyle(.orange)
+            case .failure(let error):
+                Text("Couldn’t set up Cemu: \(error.localizedDescription)")
                     .foregroundStyle(.red)
             }
         }
